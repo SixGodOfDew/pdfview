@@ -3,6 +3,8 @@ export {}
 declare global {
   interface Window {
     api: {
+      /** 设置窗口标题（老板键伪装模式切换程序名） */
+      setWindowTitle(title: string): Promise<void>
       /** 打开 PDF 文件对话框，返回路径或 null */
       openPdfDialog(): Promise<string | null>
       /** 读取 PDF 文件内容 */

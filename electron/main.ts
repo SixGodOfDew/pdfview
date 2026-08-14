@@ -53,6 +53,12 @@ async function getDataDir(): Promise<string> {
 // ============ IPC ============
 
 function registerIpc(): void {
+  // 窗口标题（老板键伪装模式：一键切换程序名）
+  ipcMain.handle('window:setTitle', (e, title: string) => {
+    if (typeof title !== 'string') return
+    BrowserWindow.fromWebContents(e.sender)?.setTitle(title)
+  })
+
   // 打开 PDF 文件对话框
   ipcMain.handle('dialog:openPdf', async () => {
     const options: Electron.OpenDialogOptions = {
@@ -511,7 +517,7 @@ async function runSmoke(win: BrowserWindow, outImage: string, outReport: string)
     await sleep(400)
     report.themeAfter = await js(`document.documentElement.dataset.theme`)
 
-    // 帮助对话框验证：F1 打开，含 12 行动态快捷键表
+    // 帮助对话框验证：F1 打开，动态快捷键表含全部动作行
     report.helpDiag = await js(`(() => new Promise((resolve) => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1', bubbles: true }))
       setTimeout(() => {

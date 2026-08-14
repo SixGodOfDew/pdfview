@@ -12,6 +12,7 @@ import { useViewerStore } from '@/stores/viewer'
 import { useBookmarkStore } from '@/stores/bookmark'
 import { useMaskStore } from '@/stores/mask'
 import { useAnnotationStore } from '@/stores/annotation'
+import { useBossModeStore } from '@/stores/bossMode'
 import { syncEngine } from '@/core/sync/SyncEngine'
 import {
   SHORTCUT_ACTIONS,
@@ -25,6 +26,7 @@ const viewer = useViewerStore()
 const bookmark = useBookmarkStore()
 const mask = useMaskStore()
 const annotation = useAnnotationStore()
+const boss = useBossModeStore()
 
 const showBookmarks = ref(false)
 const showHelp = ref(false)
@@ -43,6 +45,12 @@ syncEngine.applyToSlave = (pf: number) => {
 watchEffect(() => {
   document.documentElement.dataset.theme = settings.theme
   document.documentElement.dataset.style = settings.style
+})
+
+// —— 老板键：窗口标题（任务栏程序名）随伪装模式切换 ——
+watchEffect(() => {
+  document.title = boss.appTitle
+  void window.api.setWindowTitle(boss.appTitle)
 })
 
 // —— 通用提示 ——
@@ -158,6 +166,9 @@ function executeShortcut(action: ShortcutAction): void {
       break
     case 'help':
       showHelp.value = !showHelp.value
+      break
+    case 'bossKey':
+      boss.toggle()
       break
     case 'openQuestion':
       void openSide('question')

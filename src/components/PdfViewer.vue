@@ -4,6 +4,7 @@ import { PageMapper } from '@/core/sync/PageMapper'
 import { syncEngine } from '@/core/sync/SyncEngine'
 import { useViewerStore } from '@/stores/viewer'
 import { useSettingsStore } from '@/stores/settings'
+import { useBossModeStore } from '@/stores/bossMode'
 import PdfPage from './PdfPage.vue'
 import type { MasterSide } from '@/types'
 
@@ -12,6 +13,7 @@ const emit = defineEmits<{ (e: 'request-open', side: MasterSide): void }>()
 
 const viewerStore = useViewerStore()
 const settings = useSettingsStore()
+const boss = useBossModeStore()
 
 const scrollEl = ref<HTMLElement | null>(null)
 const mapper = new PageMapper()
@@ -141,7 +143,7 @@ function totalHeight(): number {
 <template>
   <div class="pdf-viewer">
     <div class="viewer-header">
-      <span class="vh-side">{{ side === 'question' ? '题本' : '解析' }}</span>
+      <span class="vh-side">{{ boss.sideLabel(side) }}</span>
       <span class="vh-name" :title="summary.path ?? ''">{{ summary.name ?? '未打开' }}</span>
       <span v-if="pageLabel" class="vh-page">{{ pageLabel }}</span>
     </div>
@@ -151,7 +153,7 @@ function totalHeight(): number {
         <div class="placeholder-text">正在加载 PDF…</div>
       </template>
       <template v-else>
-        <div class="placeholder-title">{{ side === 'question' ? '题本' : '解析' }}</div>
+        <div class="placeholder-title">{{ boss.sideLabel(side) }}</div>
         <button class="btn primary" @click="emit('request-open', side)">打开 PDF</button>
         <div v-if="summary.error" class="placeholder-error">{{ summary.error }}</div>
       </template>

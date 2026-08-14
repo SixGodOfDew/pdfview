@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
+import { useBossModeStore } from '@/stores/bossMode'
 import {
   SHORTCUT_ACTIONS,
   SHORTCUT_LABELS,
@@ -13,6 +14,14 @@ import {
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const settings = useSettingsStore()
+const boss = useBossModeStore()
+
+/** 动作显示名：打开动作随伪装模式显示「文档A / 文档B」 */
+function actionLabel(a: ShortcutAction): string {
+  if (a === 'openQuestion') return '打开' + boss.sideLabel('question')
+  if (a === 'openAnswer') return '打开' + boss.sideLabel('answer')
+  return SHORTCUT_LABELS[a]
+}
 
 /** 正在捕获新键位的动作（null = 无捕获） */
 const capturing = ref<ShortcutAction | null>(null)
@@ -38,7 +47,7 @@ function onKeydown(e: KeyboardEvent): void {
   capturing.value = null
   const swapped = settings.setShortcut(action, binding)
   if (swapped) {
-    swapInfo.value = `与「${SHORTCUT_LABELS[swapped as ShortcutAction]}」交换了键位`
+    swapInfo.value = `与「${actionLabel(swapped as ShortcutAction)}」交换了键位`
     setTimeout(() => (swapInfo.value = null), 3000)
   }
 }
@@ -70,7 +79,7 @@ onBeforeUnmount(() => {
                   <span class="kbd">{{ fmtBinding(settings.shortcuts[a]) }}</span>
                 </template>
               </td>
-              <td>{{ SHORTCUT_LABELS[a] }}</td>
+              <td>{{ actionLabel(a) }}</td>
               <td class="rebind-cell">
                 <button
                   v-if="capturing !== a"
@@ -103,10 +112,19 @@ onBeforeUnmount(() => {
             <b>解析遮罩</b>：点击露出 / 悬停露出（可选圆形·方形·横条·竖条）/ 橡皮擦擦除；
             「显示/隐藏」一键显示或隐藏整页解析；操作遮罩时标注自动切回浏览
           </li>
-          <li><b>同步</b>：「题本主 / 解析主」设定主窗口，滚动主窗口时另一侧按比例跟随</li>
-          <li><b>书签</b>：「＋书签」记录双侧位置；点击书签自动打开对应的题本与解析并跳转</li>
+          <li><b>同步</b>：「{{ boss.sideLabel('question') }}主 / {{ boss.sideLabel('answer') }}主」设定主窗口，滚动主窗口时另一侧按比例跟随</li>
+          <li><b>书签</b>：「＋书签」记录双侧位置；点击书签自动打开对应的{{ boss.sideLabel('question') }}与{{ boss.sideLabel('answer') }}并跳转</li>
           <li><b>分栏</b>：拖动中间分隔条调整宽度，双击均分；书签面板左缘可拖宽</li>
         </ul>
+      </section>
+
+      <section>
+        <h4>老板键（伪装模式）</h4>
+        <p class="help-note">
+          按下 <b>{{ fmtBinding(settings.shortcuts.bossKey) }}</b> 一键伪装：
+          窗口标题变为「PDF对比器」，两侧栏名变为「文档A / 文档B」，工具栏同步切换；
+          再按一次恢复原样。伪装仅本次运行有效，重启后自动恢复，也不随设置跨机同步。
+        </p>
       </section>
 
       <section>

@@ -4,6 +4,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useViewerStore } from '@/stores/viewer'
 import { useMaskStore } from '@/stores/mask'
 import { useAnnotationStore } from '@/stores/annotation'
+import { useBossModeStore } from '@/stores/bossMode'
 import SelectMenu from '@/components/SelectMenu.vue'
 import ColorPicker from '@/components/ColorPicker.vue'
 import {
@@ -27,6 +28,7 @@ const settings = useSettingsStore()
 const viewer = useViewerStore()
 const mask = useMaskStore()
 const annotation = useAnnotationStore()
+const boss = useBossModeStore()
 
 const themeLabels: Record<ThemeId, string> = {
   day: '日间',
@@ -109,9 +111,13 @@ onBeforeUnmount(() => {
 <template>
   <header class="toolbar" @scroll="closeMore">
     <div class="tb-group">
-      <span class="tb-title">PDF双栏刷题</span>
-      <button class="btn primary" @click="emit('open', 'question')">打开题本</button>
-      <button class="btn primary" @click="emit('open', 'answer')">打开解析</button>
+      <span class="tb-title">{{ boss.brand }}</span>
+      <button class="btn primary" @click="emit('open', 'question')">
+        打开{{ boss.sideLabel('question') }}
+      </button>
+      <button class="btn primary" @click="emit('open', 'answer')">
+        打开{{ boss.sideLabel('answer') }}
+      </button>
     </div>
 
     <div class="tb-group">
@@ -127,18 +133,18 @@ onBeforeUnmount(() => {
       <button
         class="btn"
         :class="{ active: settings.master === 'question' }"
-        title="只有题本滚动时解析才跟随"
+        :title="'只有' + boss.sideLabel('question') + '滚动时' + boss.sideLabel('answer') + '才跟随'"
         @click="settings.setMaster('question')"
       >
-        题本主
+        {{ boss.sideLabel('question') }}主
       </button>
       <button
         class="btn"
         :class="{ active: settings.master === 'answer' }"
-        title="只有解析滚动时题本才跟随"
+        :title="'只有' + boss.sideLabel('answer') + '滚动时' + boss.sideLabel('question') + '才跟随'"
         @click="settings.setMaster('answer')"
       >
-        解析主
+        {{ boss.sideLabel('answer') }}主
       </button>
     </div>
 

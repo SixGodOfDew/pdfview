@@ -3,6 +3,7 @@
 export type ShortcutAction =
   | 'undo'
   | 'help'
+  | 'bossKey'
   | 'openQuestion'
   | 'openAnswer'
   | 'toolPen'
@@ -17,6 +18,7 @@ export type ShortcutAction =
 export const SHORTCUT_DEFAULTS: Record<ShortcutAction, string> = {
   undo: 'ctrl+z',
   help: 'f1',
+  bossKey: 'ctrl+shift+b',
   openQuestion: 'ctrl+o',
   openAnswer: 'ctrl+shift+o',
   toolPen: 'p',
@@ -32,6 +34,7 @@ export const SHORTCUT_DEFAULTS: Record<ShortcutAction, string> = {
 export const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
   undo: '撤回标注',
   help: '打开帮助',
+  bossKey: '老板键（伪装模式）',
   openQuestion: '打开题本',
   openAnswer: '打开解析',
   toolPen: '画笔工具',
