@@ -1,0 +1,30 @@
+{
+  "name": "pdfview",
+  "version": "0.1.0",
+  "description": "PC端双栏PDF刷题阅读器（题本+解析联动）",
+  "main": "./out/main/index.js",
+  "author": "pdfview",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
+    "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "dist": "electron-vite build && electron-builder --win"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "pdfjs-dist": "^6.2.108",
+    "pinia": "^4.0.3",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6",
+    "vue": "^3.5.41",
+    "vue-tsc": "^3.3.9"
+  }
+}

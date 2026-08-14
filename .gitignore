@@ -1,0 +1,13 @@
+node_modules/
+out/
+release/
+.npm-cache/
+.electron-cache/
+.electron-builder-cache/
+*.log
+.DS_Store
+.smoke.png
+.smoke-report.json
+.smoke-data/
+scripts/testdata/
+*.tsbuildinfo

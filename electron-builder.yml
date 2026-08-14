@@ -1,0 +1,15 @@
+appId: com.pdfview.app
+productName: PDF双栏刷题阅读器
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: PDF双栏刷题阅读器
+  deleteAppDataOnUninstall: false
+artifactName: '${productName}-Setup-${version}.exe'
