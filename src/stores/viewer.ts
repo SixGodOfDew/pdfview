@@ -48,6 +48,8 @@ export const useViewerStore = defineStore('viewer', () => {
   }
   /** 尺寸数据变更信号（触发组件重建 PageMapper） */
   const sizeVersion = ref(0)
+  /** 文档实例变更信号（触发组件 doc computed 重算：再次打开时重渲染） */
+  const docVersion = ref(0)
 
   const apis: Record<MasterSide, ViewerApi | null> = { question: null, answer: null }
 
@@ -60,6 +62,7 @@ export const useViewerStore = defineStore('viewer', () => {
   }
 
   function getDoc(side: MasterSide): PdfDocument | null {
+    void docVersion.value
     return docs[side]
   }
 
@@ -107,6 +110,7 @@ export const useViewerStore = defineStore('viewer', () => {
       }
       baseSizes[side] = { heights, widths }
       sizeVersion.value++
+      docVersion.value++
 
       s.path = path
       s.name = path.split(/[\\/]/).pop() ?? path
@@ -129,6 +133,7 @@ export const useViewerStore = defineStore('viewer', () => {
     docs[side] = null
     baseSizes[side] = { heights: [], widths: [] }
     sizeVersion.value++
+    docVersion.value++
     Object.assign(s, emptySummary())
   }
 

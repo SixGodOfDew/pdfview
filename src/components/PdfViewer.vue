@@ -34,6 +34,14 @@ watch(heights, () => {
   }
 })
 
+// —— 文档更换（再次打开 PDF）：滚动位置复位到顶部 ——
+watch(doc, () => {
+  scrollTop.value = 0
+  pendingPf = null
+  const el = scrollEl.value
+  if (el) el.scrollTop = 0
+})
+
 // —— 虚拟滚动：只渲染可视页 ±2 ——
 const scrollTop = ref(0)
 const viewportH = ref(0)

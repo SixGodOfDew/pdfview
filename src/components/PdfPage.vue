@@ -348,6 +348,8 @@ function boxStyle(box: TextBox): Record<string, string> {
 // ================= 生命周期 =================
 
 watch(() => props.scale, () => void render())
+// 文档实例更换（再次打开 PDF 时同页码组件被复用）→ 重新渲染
+watch(() => props.doc, () => void render())
 watch(
   [() => maskStore.version, () => maskStore.enabled, () => settings.hoverShape],
   () => redrawMask()

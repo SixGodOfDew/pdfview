@@ -773,6 +773,29 @@ async function runSmoke(win: BrowserWindow, outImage: string, outReport: string)
       }
     })()`)
 
+    // 再次打开 PDF 回归：滚动后重开另一文件 → 文档切换、渲染、滚动复位
+    if (q2) {
+      report.reopenDiag = await js(`(() => new Promise((resolve) => {
+        const els = document.querySelectorAll('.viewer-scroll')
+        els[0].scrollTop = 500
+        els[0].dispatchEvent(new Event('scroll'))
+        const beforeScroll = Math.round(els[0].scrollTop)
+        window.__viewerStore.open('question', ${JSON.stringify(q2)}).then((r) => {
+          setTimeout(() => {
+            const els2 = document.querySelectorAll('.viewer-scroll')
+            resolve({
+              result: r,
+              isQ2: (window.__viewerStore.left.path ?? '').includes('question2'),
+              numPages: window.__viewerStore.left.numPages,
+              beforeScroll,
+              afterScroll: Math.round(els2[0].scrollTop),
+              renderedPages: document.querySelectorAll('.pdf-page').length
+            })
+          }, 2500)
+        })
+      }))()`)
+    }
+
     // 文本框双击编辑与删除按钮验证（先双击后删除，都用既有框）
     report.textBoxDiag = await js(`(() => new Promise((resolve) => {
       const aPath = window.__viewerStore.right.path
