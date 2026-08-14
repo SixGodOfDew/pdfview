@@ -10,4 +10,5 @@ release/
 .smoke-report.json
 .smoke-data/
 scripts/testdata/
+build/icon-1024.png
 *.tsbuildinfo

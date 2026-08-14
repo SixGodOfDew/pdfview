@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- 品牌红渐变底板：呼应界面主色 red (#e3262e) -->
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2545b"/>
+      <stop offset="1" stop-color="#c01017"/>
+    </linearGradient>
+    <!-- 顶部柔光，增加体积感 -->
+    <radialGradient id="sheen" cx="0.3" cy="0.18" r="0.85">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 页面投影 -->
+    <linearGradient id="pageShadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000000" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底板 -->
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#tile)"/>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#sheen)"/>
+
+  <!-- 书脊（双栏分界，透出底板红） -->
+  <rect x="486" y="300" width="52" height="424" rx="18" fill="#000000" fill-opacity="0.16"/>
+
+  <!-- 左页 · 题本 -->
+  <rect x="228" y="312" width="272" height="424" rx="26" fill="#000000" fill-opacity="0.18"/>
+  <rect x="216" y="300" width="272" height="424" rx="26" fill="#fffdf8"/>
+  <rect x="250" y="352" width="204" height="20" rx="10" fill="#e4e0d3"/>
+  <rect x="250" y="390" width="204" height="20" rx="10" fill="#e4e0d3"/>
+  <rect x="250" y="428" width="140" height="20" rx="10" fill="#e4e0d3"/>
+  <!-- 问号（未答题目） -->
+  <g fill="none" stroke="#d81e26" stroke-width="34" stroke-linecap="round">
+    <path d="M 302 598 A 70 70 0 1 1 402 598"/>
+    <path d="M 402 598 C 392 638, 364 650, 350 630"/>
+  </g>
+  <circle cx="348" cy="676" r="18" fill="#d81e26"/>
+
+  <!-- 右页 · 解析 -->
+  <rect x="548" y="312" width="272" height="424" rx="26" fill="#000000" fill-opacity="0.18"/>
+  <rect x="536" y="300" width="272" height="424" rx="26" fill="#fffdf8"/>
+  <rect x="570" y="352" width="204" height="20" rx="10" fill="#e4e0d3"/>
+  <rect x="570" y="390" width="204" height="20" rx="10" fill="#e4e0d3"/>
+  <rect x="570" y="428" width="140" height="20" rx="10" fill="#e4e0d3"/>
+  <!-- 对勾（已解析） -->
+  <path d="M 616 596 L 660 640 L 736 546" fill="none" stroke="#d81e26"
+        stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- PDF 标识 -->
+  <rect x="372" y="786" width="280" height="108" rx="54" fill="#fffdf8"/>
+  <text x="512" y="846" text-anchor="middle"
+        font-family="'Segoe UI', Arial, Helvetica, sans-serif"
+        font-size="78" font-weight="800" letter-spacing="4" fill="#c01017">PDF</text>
+</svg>

@@ -12,7 +12,9 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "dist": "electron-vite build && electron-builder --win"
+    "dist": "electron-vite build && electron-builder --win",
+    "icon": "electron scripts/render-icon.js",
+    "icon:preview": "electron scripts/preview-icon.js"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

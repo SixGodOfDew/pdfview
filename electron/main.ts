@@ -8,6 +8,7 @@ import { existsSync } from 'fs'
 interface AppConfig {
   dataDir?: string // 用户自定义数据目录（未设置时用默认）
   lastExportDir?: string
+  lastPdfDir?: string // 上次打开 PDF 时浏览到的目录（文件对话框跨会话记忆）
   windowBounds?: { x: number; y: number; width: number; height: number }
 }
 
@@ -59,19 +60,29 @@ function registerIpc(): void {
     BrowserWindow.fromWebContents(e.sender)?.setTitle(title)
   })
 
-  // 打开 PDF 文件对话框
+  // 打开 PDF 文件对话框（继承上一次会话的浏览目录，再次唤起定位到上次所在文件夹）
   ipcMain.handle('dialog:openPdf', async () => {
+    const cfg = await loadConfig()
     const options: Electron.OpenDialogOptions = {
       title: '选择 PDF 文件',
       properties: ['openFile'],
       filters: [{ name: 'PDF 文件', extensions: ['pdf'] }]
+    }
+    // 上次浏览目录仍存在才作为起始位置，避免目录被删/断网后对话框报错
+    if (cfg.lastPdfDir && existsSync(cfg.lastPdfDir)) {
+      options.defaultPath = cfg.lastPdfDir
     }
     const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
     const result = win
       ? await dialog.showOpenDialog(win, options)
       : await dialog.showOpenDialog(options)
     if (result.canceled || result.filePaths.length === 0) return null
-    return result.filePaths[0]
+    const filePath = result.filePaths[0]
+    // 持久化本次浏览到的目录：本次会话内再次打开、下次启动后都从这里开始
+    const nextCfg: AppConfig = { ...cfg, lastPdfDir: dirname(filePath) }
+    configCache = nextCfg
+    await atomicWrite(configPath(), JSON.stringify(nextCfg, null, 2))
+    return filePath
   })
 
   // 读取 PDF 文件内容（返回 Buffer，经 IPC 结构化克隆为 Uint8Array）
@@ -121,6 +132,8 @@ function registerIpc(): void {
 async function createWindow(): Promise<void> {
   const cfg = await loadConfig()
   const bounds = cfg.windowBounds
+  // 开发模式窗口/任务栏图标；打包后由 exe 内嵌图标接管
+  const iconPng = join(app.getAppPath(), 'build', 'icon.png')
 
   const win = new BrowserWindow({
     width: bounds?.width ?? 1440,
@@ -130,6 +143,7 @@ async function createWindow(): Promise<void> {
     minWidth: 960,
     minHeight: 600,
     title: 'PDF双栏刷题阅读器',
+    icon: existsSync(iconPng) ? iconPng : undefined,
     backgroundColor: '#1e1e1e',
     autoHideMenuBar: true,
     webPreferences: {
