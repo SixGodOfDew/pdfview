@@ -1,4 +1,4 @@
-import type { HoverShape, MaskStroke } from '@/types'
+import type { DocMasks, HoverShape, MaskStroke, PageMask } from '@/types'
 
 /** 悬停临时擦除的位置与形状（可自定义形状） */
 export interface HoverSpec {
@@ -15,42 +15,103 @@ const HOVER_SHAPE_SIZE: Record<HoverShape, { w: number; h: number; r: number }> 
   tall: { w: 92, h: 240, r: 20 }
 }
 
+/** 橡皮擦默认半径（基础坐标） */
+export const ERASER_RADIUS = 18
+/** 拖动中相邻顶点的最小间距：过近的采样点直接丢弃，控制折线顶点数量 */
+const ERASER_MIN_STEP = 3
+
 /**
  * 解析遮罩管理。
  * 笔画坐标存「相对页面的基础坐标」（uiScale=1 时的 CSS px），缩放后位置依然正确；
  * 渲染时乘以 scalePx（= uiScale × devicePixelRatio）换算为画布设备像素。
  * 遮罩 = 半透明底 + destination-out 擦除。
+ *
+ * 存储键是「文件路径 + 页号」：换一本解析时旧擦除不会串到新文件上。
  */
 export class MaskManager {
-  private pages = new Map<number, MaskStroke[]>()
+  /** 文件路径 → 页号 → 擦除笔画 */
+  private docs = new Map<string, Map<number, MaskStroke[]>>()
+  /** 拖动中的临时折线（未提交、不落盘） */
+  private transient: { path: string; page: number; stroke: MaskStroke } | null = null
 
-  addStroke(page: number, stroke: MaskStroke): void {
-    const list = this.pages.get(page)
-    if (list) list.push(stroke)
-    else this.pages.set(page, [stroke])
+  private pageOf(path: string, page: number): MaskStroke[] {
+    let doc = this.docs.get(path)
+    if (!doc) {
+      doc = new Map()
+      this.docs.set(path, doc)
+    }
+    let list = doc.get(page)
+    if (!list) {
+      list = []
+      doc.set(page, list)
+    }
+    return list
+  }
+
+  addStroke(path: string, page: number, stroke: MaskStroke): void {
+    this.pageOf(path, page).push(stroke)
   }
 
   /** 点击模式：固定半径圆形擦除 */
-  eraseCircle(page: number, x: number, y: number, radius = 70): void {
-    this.addStroke(page, { type: 'circle', points: [{ x, y }], radius })
+  eraseCircle(path: string, page: number, x: number, y: number, radius = 70): void {
+    this.addStroke(path, page, { type: 'circle', points: [{ x, y }], radius })
   }
 
-  /** 橡皮擦：连续折线擦除（单点为圆） */
-  erasePolyline(page: number, points: { x: number; y: number }[], radius = 18): void {
-    if (points.length === 0) return
-    this.addStroke(page, { type: 'polyline', points, radius })
+  /**
+   * 橡皮擦拖动开始：建立一条临时折线，拖动中不断追加顶点。
+   * 「一次拖动 = 一条笔画」，避免每个 mousemove 都新增一个圆（旧实现会让笔画数量
+   * 随采样点数爆炸，渲染开销与落盘体积同步增长）。
+   */
+  beginErase(path: string, page: number, x: number, y: number, radius = ERASER_RADIUS): void {
+    this.transient = { path, page, stroke: { type: 'polyline', points: [{ x, y }], radius } }
   }
 
-  clearPage(page: number): void {
-    this.pages.delete(page)
+  /** 拖动中追加顶点；返回是否真的追加（过近的采样点被丢弃） */
+  extendErase(x: number, y: number): boolean {
+    const t = this.transient
+    if (!t) return false
+    const pts = t.stroke.points
+    const last = pts[pts.length - 1]
+    if (Math.abs(x - last.x) < ERASER_MIN_STEP && Math.abs(y - last.y) < ERASER_MIN_STEP) {
+      return false
+    }
+    pts.push({ x, y })
+    return true
   }
 
+  /** 拖动结束：提交为持久笔画；返回是否产生了一次实际擦除 */
+  endErase(): boolean {
+    const t = this.transient
+    this.transient = null
+    if (!t) return false
+    this.pageOf(t.path, t.page).push(t.stroke)
+    return true
+  }
+
+  /** 丢弃未提交的拖动（开关切换、页卸载等） */
+  cancelErase(): void {
+    this.transient = null
+  }
+
+  clearPage(path: string, page: number): void {
+    this.transient = null
+    this.docs.get(path)?.delete(page)
+  }
+
+  /** 清空全部文件的遮罩 */
   clearAll(): void {
-    this.pages.clear()
+    this.transient = null
+    this.docs.clear()
   }
 
-  hasStrokes(page: number): boolean {
-    const l = this.pages.get(page)
+  /** 清空单个文件的遮罩 */
+  clearDoc(path: string): void {
+    this.transient = null
+    this.docs.delete(path)
+  }
+
+  hasStrokes(path: string, page: number): boolean {
+    const l = this.docs.get(path)?.get(page)
     return !!l && l.length > 0
   }
 
@@ -61,6 +122,7 @@ export class MaskManager {
    */
   renderPage(
     ctx: CanvasRenderingContext2D,
+    path: string,
     page: number,
     scalePx: number,
     hover?: HoverSpec | null
@@ -75,7 +137,12 @@ export class MaskManager {
     ctx.fillStyle = '#000'
     ctx.strokeStyle = '#000'
 
-    for (const s of this.pages.get(page) ?? []) {
+    const strokes = this.docs.get(path)?.get(page) ?? []
+    // 拖动中的临时折线一并绘制，保证擦除过程有实时反馈
+    const t = this.transient
+    const all = t && t.path === path && t.page === page ? [...strokes, t.stroke] : strokes
+
+    for (const s of all) {
       if (s.type === 'circle') {
         for (const p of s.points) {
           ctx.beginPath()
@@ -83,7 +150,7 @@ export class MaskManager {
           ctx.fill()
         }
       } else {
-        const r = (s.radius ?? 18) * scalePx
+        const r = (s.radius ?? ERASER_RADIUS) * scalePx
         const pts = s.points
         if (pts.length === 1) {
           ctx.beginPath()
@@ -117,5 +184,30 @@ export class MaskManager {
       ctx.fill()
     }
     ctx.restore()
+  }
+
+  /** 序列化（masks.json）：空页不落盘 */
+  toJSON(): DocMasks[] {
+    const out: DocMasks[] = []
+    for (const [path, pagesMap] of this.docs) {
+      const pages: PageMask[] = []
+      for (const [page, strokes] of pagesMap) {
+        if (strokes.length > 0) pages.push({ page, strokes })
+      }
+      if (pages.length > 0) {
+        out.push({ path, fileName: path.split(/[\\/]/).pop() ?? path, pages })
+      }
+    }
+    return out
+  }
+
+  loadFrom(data: DocMasks[]): void {
+    this.docs.clear()
+    this.transient = null
+    for (const doc of data) {
+      const m = new Map<number, MaskStroke[]>()
+      for (const p of doc.pages) m.set(p.page, [...p.strokes])
+      this.docs.set(doc.path, m)
+    }
   }
 }

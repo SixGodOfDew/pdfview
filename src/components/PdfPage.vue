@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PdfDocument } from '@/core/pdf/PdfDocument'
+import { ERASER_RADIUS } from '@/core/mask/MaskManager'
 import { useMaskStore } from '@/stores/mask'
 import { useAnnotationStore } from '@/stores/annotation'
 import { useSettingsStore } from '@/stores/settings'
@@ -24,7 +25,10 @@ const inkCanvas = ref<HTMLCanvasElement | null>(null)
 const boxInput = ref<HTMLTextAreaElement | null>(null)
 
 const hoverPos = ref<{ x: number; y: number } | null>(null)
-const erasing = ref(false)
+/** 遮罩橡皮擦拖动中（一次拖动 = 一条折线） */
+const maskErasing = ref(false)
+/** 画笔橡皮擦拖动中（连续删除经过的整条笔迹） */
+const annotationErasing = ref(false)
 
 // —— 画笔进行中的临时笔画 ——
 const currentStroke = ref<InkStroke | null>(null)
@@ -75,13 +79,17 @@ function redrawMask(): void {
   if (!mc) return
   const ctx = mc.getContext('2d')
   if (!ctx) return
+  if (!props.path) {
+    ctx.clearRect(0, 0, mc.width, mc.height)
+    return
+  }
   const dpr = window.devicePixelRatio || 1
   const scalePx = props.scale * dpr
   const hover =
     maskStore.mode === 'hover' && hoverPos.value
       ? { ...hoverPos.value, shape: settings.hoverShape }
       : null
-  maskStore.manager.renderPage(ctx, props.pageIndex, scalePx, hover)
+  maskStore.manager.renderPage(ctx, props.path, props.pageIndex, scalePx, hover)
 }
 
 /** 重绘笔迹层（持久笔画 + 进行中的笔画） */
@@ -124,32 +132,45 @@ function switchToBrowse(): void {
 }
 
 function onMouseDown(e: MouseEvent): void {
+  const path = props.path
+  if (!path) return
   // 遮罩橡皮擦优先（任何工具下都可用，操作时自动切回浏览）
   if (isMaskInteractive() && maskStore.mode === 'eraser') {
     switchToBrowse()
-    erasing.value = true
+    maskErasing.value = true
     const { x, y } = evtPos(e)
-    maskStore.eraseCircle(props.pageIndex, x, y, 18)
+    maskStore.beginErase(path, props.pageIndex, x, y)
     return
   }
   if (annotation.activeTool === 'pen') {
-    startInk(e)
+    if (annotation.penMode === 'erase') {
+      annotationErasing.value = true
+      const { x, y } = evtPos(e)
+      annotation.eraseStrokesAt(path, props.pageIndex, x, y, ERASER_RADIUS)
+    } else {
+      startInk(e)
+    }
   }
 }
 
 function onMouseMove(e: MouseEvent): void {
   // 正在绘制的笔画优先（不可被打断）
-  if (currentStroke.value && annotation.activeTool === 'pen') {
+  if (currentStroke.value) {
     const { x, y } = evtPos(e)
     currentStroke.value.points.push({ x, y })
     redrawInk()
     return
   }
-  // 遮罩橡皮擦拖动
-  if (isMaskInteractive() && maskStore.mode === 'eraser' && erasing.value) {
-    switchToBrowse()
+  // 遮罩橡皮擦拖动：追加折线顶点（一次拖动只产生一条笔画）
+  if (maskErasing.value) {
     const { x, y } = evtPos(e)
-    maskStore.eraseCircle(props.pageIndex, x, y, 18)
+    maskStore.extendErase(x, y)
+    return
+  }
+  // 画笔橡皮擦拖动：删除经过的整条笔迹
+  if (annotationErasing.value && props.path) {
+    const { x, y } = evtPos(e)
+    annotation.eraseStrokesAt(props.path, props.pageIndex, x, y, ERASER_RADIUS)
     return
   }
   // 遮罩悬停露出（任何工具下，操作时自动切回浏览）
@@ -161,32 +182,46 @@ function onMouseMove(e: MouseEvent): void {
   }
 }
 
-function onMouseUp(): void {
-  if (currentStroke.value && annotation.activeTool === 'pen') {
+/**
+ * 结算所有进行中的交互（幂等）。
+ * 画布 mouseup 与窗口级 mouseup 都会调用：鼠标在页面外松开时也能正确落笔，
+ * 不再出现「笔画画到一半、在页面外松手就丢失」的情况。
+ */
+function finishSessions(): void {
+  if (currentStroke.value) {
     const stroke = currentStroke.value
     currentStroke.value = null
-    if (props.path) {
-      annotation.addStroke(props.path, props.pageIndex, stroke)
-    }
+    if (props.path) annotation.addStroke(props.path, props.pageIndex, stroke)
     redrawInk()
   }
-  erasing.value = false
+  if (annotationErasing.value) {
+    annotationErasing.value = false
+    annotation.endEraseSession()
+  }
+  if (maskErasing.value) {
+    maskErasing.value = false
+    maskStore.endErase()
+  }
+}
+
+function onMouseUp(): void {
+  finishSessions()
 }
 
 function onLeave(): void {
+  // 拖拽中途移出页面：不中断会话（页面外的坐标同样有效），由窗口级 mouseup 结算
   if (hoverPos.value) {
     hoverPos.value = null
     redrawMask()
   }
-  erasing.value = false
 }
 
 function onClick(e: MouseEvent): void {
   // 遮罩点击露出优先（任何工具下，操作时自动切回浏览）
-  if (isMaskInteractive() && maskStore.mode === 'click') {
+  if (isMaskInteractive() && maskStore.mode === 'click' && props.path) {
     switchToBrowse()
     const { x, y } = evtPos(e)
-    maskStore.eraseCircle(props.pageIndex, x, y, 70)
+    maskStore.eraseCircle(props.path, props.pageIndex, x, y, 70)
     return
   }
   if (annotation.activeTool === 'text') {
@@ -355,12 +390,21 @@ watch(
   () => redrawMask()
 )
 watch([() => annotation.version, () => props.path], () => redrawInk())
-// 工具切换时结算编辑框：空文本自动删除（blur 不可靠的兜底）
+// 工具切换时结算编辑框：空文本自动删除（blur 不可靠的兜底）。
+// 注意：这里不能调用 finishSessions()——遮罩/画笔在 onMouseDown 里会先 switchToBrowse()
+// 再开启擦除会话，而 watcher 是异步 flush 的，会把刚开始的会话立刻结算掉。
+// 进行中的会话统一由窗口级 mouseup 结算，不依赖工具切换。
 watch(() => annotation.activeTool, () => settleEditing())
 
-onMounted(() => void render())
+onMounted(() => {
+  window.addEventListener('mouseup', onMouseUp)
+  void render()
+})
 onBeforeUnmount(() => {
   renderSeq++
+  // 结算未完成的交互：正在画的笔画 / 擦除拖动在卸载时要落笔，而不是丢弃
+  finishSessions()
+  window.removeEventListener('mouseup', onMouseUp)
   // 组件卸载前结算编辑框（聚焦的 textarea 随虚拟滚动卸载时 blur 不会触发）
   settleEditing()
   // 释放位图内存（虚拟滚动滚出可视区时回收）
@@ -387,7 +431,8 @@ onBeforeUnmount(() => {
       ref="inkCanvas"
       class="ink-canvas"
       :class="{
-        'ink-pen': annotation.activeTool === 'pen' && !isMaskInteractive(),
+        'ink-pen': annotation.activeTool === 'pen' && annotation.penMode === 'draw' && !isMaskInteractive(),
+        'ink-erase': annotation.activeTool === 'pen' && annotation.penMode === 'erase' && !isMaskInteractive(),
         'ink-text': annotation.activeTool === 'text' && !isMaskInteractive(),
         'ink-mask-eraser': isMaskInteractive() && maskStore.mode === 'eraser'
       }"

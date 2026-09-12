@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PageMapper } from '@/core/sync/PageMapper'
 import { syncEngine } from '@/core/sync/SyncEngine'
 import { useViewerStore } from '@/stores/viewer'
 import { useSettingsStore } from '@/stores/settings'
+import { useProgressStore } from '@/stores/progress'
 import { useBossModeStore } from '@/stores/bossMode'
 import PdfPage from './PdfPage.vue'
 import type { MasterSide } from '@/types'
@@ -13,10 +14,14 @@ const emit = defineEmits<{ (e: 'request-open', side: MasterSide): void }>()
 
 const viewerStore = useViewerStore()
 const settings = useSettingsStore()
+const progress = useProgressStore()
 const boss = useBossModeStore()
 
 const scrollEl = ref<HTMLElement | null>(null)
 const mapper = new PageMapper()
+
+/** 「适应宽度」时页面两侧保留的余量（px） */
+const FIT_WIDTH_MARGIN = 14
 
 const summary = computed(() => (props.side === 'question' ? viewerStore.left : viewerStore.right))
 const doc = computed(() => viewerStore.getDoc(props.side))
@@ -36,13 +41,22 @@ watch(heights, () => {
   }
 })
 
-// —— 文档更换（再次打开 PDF）：滚动位置复位到顶部 ——
-watch(doc, () => {
-  scrollTop.value = 0
-  pendingPf = null
-  const el = scrollEl.value
-  if (el) el.scrollTop = 0
-})
+// —— 文档更换（再次打开 PDF）：滚动复位到顶部，随后恢复该文件上次的阅读位置 ——
+// flush: 'post' 保证 heights 的 watcher（pre）已用新文档尺寸重建过 mapper；
+// 同步恢复而不是延到 nextTick，这样调用方的后续跳转（如书签）一定排在它之后。
+watch(
+  doc,
+  () => {
+    pendingPf = null
+    scrollTop.value = 0
+    const el = scrollEl.value
+    if (el) el.scrollTop = 0
+    const path = summary.value.path
+    if (!path || !summary.value.loaded) return
+    applyPageFloat(progress.get(path))
+  },
+  { flush: 'post' }
+)
 
 // —— 虚拟滚动：只渲染可视页 ±2 ——
 const scrollTop = ref(0)
@@ -67,6 +81,7 @@ function onScroll(): void {
   scrollTop.value = el.scrollTop
   const pf = mapper.scrollTopToPageFloat(el.scrollTop)
   summary.value.pageFloat = pf
+  progress.set(summary.value.path, pf, summary.value.name)
   if (settings.syncEnabled && props.side === settings.master) {
     syncEngine.onMasterScroll(pf)
   }
@@ -97,13 +112,63 @@ function applyScale(newScale: number): void {
   viewerStore.setScale(props.side, newScale)
 }
 
+/** 跳转到指定页（0-based）；在主侧时联动从侧，并记入阅读进度 */
 function gotoPage(pageIndex: number): void {
   const el = scrollEl.value
   if (!el) return
-  const top = mapper.pageFloatToScrollTop(pageIndex)
+  const n = heights.value.length
+  if (n === 0) return
+  const target = Math.min(Math.max(0, pageIndex), n - 1)
+  const top = mapper.pageFloatToScrollTop(target)
   el.scrollTop = top
   scrollTop.value = top
-  summary.value.pageFloat = pageIndex
+  summary.value.pageFloat = target
+  progress.set(summary.value.path, target, summary.value.name)
+  if (settings.syncEnabled && props.side === settings.master) {
+    syncEngine.onMasterScroll(target)
+  }
+}
+
+/** 适应宽度：按当前页基准宽度算出刚好铺满栏宽的缩放 */
+function fitWidth(): void {
+  const el = scrollEl.value
+  if (!el) return
+  const widths = viewerStore.getBaseSizes(props.side).widths
+  const n = widths.length
+  if (n === 0) return
+  const i = Math.min(n - 1, Math.max(0, Math.round(summary.value.pageFloat)))
+  const w = widths[i]
+  if (!w) return
+  const avail = el.clientWidth - FIT_WIDTH_MARGIN
+  if (avail <= 0) return
+  viewerStore.requestScale(props.side, avail / w)
+}
+
+// —— 页码跳转输入 ——
+const jumping = ref(false)
+const jumpDraft = ref('')
+const jumpInput = ref<HTMLInputElement | null>(null)
+
+function startJump(): void {
+  if (summary.value.numPages === 0) return
+  jumping.value = true
+  jumpDraft.value = String(Math.floor(summary.value.pageFloat) + 1)
+  void nextTick(() => {
+    jumpInput.value?.focus()
+    jumpInput.value?.select()
+  })
+}
+
+function commitJump(): void {
+  if (!jumping.value) return
+  jumping.value = false
+  const n = Number(jumpDraft.value.trim())
+  if (!Number.isFinite(n) || n < 1) return
+  gotoPage(Math.min(summary.value.numPages, Math.floor(n)) - 1)
+}
+
+function cancelJump(): void {
+  jumping.value = false
 }
 
 let ro: ResizeObserver | null = null
@@ -120,7 +185,7 @@ watch(scrollEl, (el) => {
 })
 
 onMounted(() => {
-  viewerStore.register(props.side, { applyPageFloat, applyScale, gotoPage })
+  viewerStore.register(props.side, { applyPageFloat, applyScale, gotoPage, fitWidth })
 })
 onBeforeUnmount(() => {
   viewerStore.register(props.side, null)
@@ -145,7 +210,26 @@ function totalHeight(): number {
     <div class="viewer-header">
       <span class="vh-side">{{ boss.sideLabel(side) }}</span>
       <span class="vh-name" :title="summary.path ?? ''">{{ summary.name ?? '未打开' }}</span>
-      <span v-if="pageLabel" class="vh-page">{{ pageLabel }}</span>
+      <input
+        v-if="jumping"
+        ref="jumpInput"
+        v-model="jumpDraft"
+        class="vh-jump"
+        type="text"
+        inputmode="numeric"
+        title="输入页码后回车跳转（Esc 取消）"
+        @keydown.enter.prevent="commitJump"
+        @keydown.esc.prevent="cancelJump"
+        @blur="commitJump"
+      />
+      <button
+        v-else-if="pageLabel"
+        class="vh-page"
+        title="点击输入页码跳转"
+        @click="startJump"
+      >
+        {{ pageLabel }}
+      </button>
     </div>
     <div v-if="!summary.loaded" class="viewer-placeholder">
       <template v-if="summary.loading">

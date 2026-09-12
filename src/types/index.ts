@@ -9,6 +9,9 @@ export type StyleId = 'swiss' | 'ink' | 'brutal'
 /** 当前激活工具：浏览（遮罩交互/滚动）/ 画笔 / 文字 */
 export type ToolId = 'browse' | 'pen' | 'text'
 
+/** 专注模式下的分栏布局：双栏 / 仅题本 / 仅解析 */
+export type PaneLayout = 'both' | 'question' | 'answer'
+
 /** 悬停遮罩形状 */
 export type HoverShape = 'circle' | 'square' | 'wide' | 'tall'
 
@@ -17,6 +20,28 @@ export interface MaskStroke {
   type: 'circle' | 'polyline'
   points: { x: number; y: number }[]
   radius?: number
+}
+
+/** 单页遮罩擦除记录 */
+export interface PageMask {
+  page: number
+  strokes: MaskStroke[]
+}
+
+/** 单个文件的全部遮罩擦除记录（masks.json 持久化格式） */
+export interface DocMasks {
+  path: string
+  fileName: string
+  pages: PageMask[]
+}
+
+/** 单文件的阅读进度（progress.json 持久化格式） */
+export interface ReadingProgress {
+  path: string
+  fileName: string
+  /** 0-based 页浮点：恢复滚动位置的依据 */
+  pageFloat: number
+  updatedAt: number
 }
 
 /** 画笔笔迹（坐标：相对页面的基础坐标，缩放无关） */
@@ -81,12 +106,23 @@ export interface SyncableSettings {
   syncEnabled: boolean
   master: MasterSide
   hoverShape: HoverShape
+  /** 分栏比例（左侧宽度百分比，20~80），拖动后记忆 */
+  splitPct?: number
   /** 快捷键绑定（动作 → 键位字符串），可自定义 */
   shortcuts?: Record<string, string>
 }
 
 export const THEME_IDS: ThemeId[] = ['day', 'night', 'warm', 'print']
 export const STYLE_IDS: StyleId[] = ['swiss', 'ink', 'brutal']
+export const SPLIT_PCT_MIN = 20
+export const SPLIT_PCT_MAX = 80
+export const SPLIT_PCT_DEFAULT = 50
+export const PANE_LAYOUTS: PaneLayout[] = ['both', 'question', 'answer']
+export const PANE_LAYOUT_LABELS: Record<PaneLayout, string> = {
+  both: '双栏',
+  question: '仅题本',
+  answer: '仅解析'
+}
 export const STYLE_LABELS: Record<StyleId, string> = {
   swiss: '瑞士国际',
   ink: '中国水墨',

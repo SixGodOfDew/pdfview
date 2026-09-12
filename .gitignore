@@ -12,3 +12,4 @@ release/
 scripts/testdata/
 build/icon-1024.png
 *.tsbuildinfo
+.workbuddy/

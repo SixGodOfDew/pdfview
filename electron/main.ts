@@ -31,11 +31,25 @@ async function loadConfig(): Promise<AppConfig> {
   return configCache as AppConfig
 }
 
+let tmpSeq = 0
+
+/**
+ * 原子写：先写唯一临时文件再 rename 覆盖。
+ * 临时名带 pid + 自增序号：即便渲染进程侧出现并发写，也不会两个写抢同一个 .tmp。
+ * rename 在 Windows 上可能被杀软/网盘占用短暂拒绝（EPERM），退避重试一次。
+ */
 async function atomicWrite(file: string, content: string): Promise<void> {
   await mkdir(dirname(file), { recursive: true })
-  const tmp = file + '.tmp'
+  const tmp = `${file}.${process.pid}.${++tmpSeq}.tmp`
   await writeFile(tmp, content, 'utf-8')
-  await rename(tmp, file)
+  try {
+    await rename(tmp, file)
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code
+    if (code !== 'EPERM' && code !== 'EACCES' && code !== 'EBUSY') throw e
+    await new Promise((r) => setTimeout(r, 120))
+    await rename(tmp, file)
+  }
 }
 
 // ============ 数据目录（业务数据 JSON，可自定义用于跨机同步） ============
@@ -49,6 +63,28 @@ async function getDataDir(): Promise<string> {
   if (process.env['PDFVIEW_SMOKE_DATA_DIR']) return process.env['PDFVIEW_SMOKE_DATA_DIR']
   const cfg = await loadConfig()
   return cfg.dataDir || defaultDataDir()
+}
+
+/**
+ * 启动底色：读取上次使用的主题，避免窗口创建到首帧渲染之间闪一下不匹配的底色
+ * （原先固定 #1e1e1e，日间主题下会先闪一块深色）。
+ * 与 styles.css 中各主题的 --t-bg 保持一致。
+ */
+async function startupBackground(): Promise<string> {
+  const byTheme: Record<string, string> = {
+    day: '#e9e9e9',
+    night: '#0a0a0a',
+    warm: '#ede4cb',
+    print: '#e0e0e0'
+  }
+  try {
+    const p = join(await getDataDir(), 'settings.json')
+    if (!existsSync(p)) return byTheme.day as string
+    const raw = JSON.parse(await readFile(p, 'utf-8')) as { theme?: string }
+    return byTheme[raw.theme ?? ''] ?? (byTheme.day as string)
+  } catch {
+    return byTheme.day as string
+  }
 }
 
 // ============ IPC ============
@@ -144,7 +180,7 @@ async function createWindow(): Promise<void> {
     minHeight: 600,
     title: 'PDF双栏刷题阅读器',
     icon: existsSync(iconPng) ? iconPng : undefined,
-    backgroundColor: '#1e1e1e',
+    backgroundColor: await startupBackground(),
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -234,7 +270,9 @@ async function runSmoke(win: BrowserWindow, outImage: string, outReport: string)
     // 遮罩：解析侧擦除一个圆（验证 MaskManager 渲染链路）
     if (a) {
       report.maskVersionBefore = await js(`window.__maskStore.version`)
-      await js(`window.__maskStore.eraseCircle(0, 200, 200, 90)`)
+      await js(
+        `window.__maskStore.eraseCircle(window.__viewerStore.right.path, 0, 200, 200, 90)`
+      )
       await sleep(400)
       report.maskVersionAfter = await js(`window.__maskStore.version`)
     }

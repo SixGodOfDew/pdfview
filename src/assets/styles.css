@@ -11,6 +11,7 @@
 
 :root {
   /* 日间 · 白纸黑字 */
+  color-scheme: light; /* 让原生控件（取色器/滚动条/输入框）跟随主题着色 */
   --t-paper: #ffffff;
   --t-ink: #101010;
   --t-bg: #e9e9e9;
@@ -23,6 +24,7 @@
 
 html[data-theme='night'] {
   /* 夜间 · 黑纸白字 */
+  color-scheme: dark;
   --t-paper: #141414;
   --t-ink: #f2f2f2;
   --t-bg: #0a0a0a;
@@ -35,6 +37,7 @@ html[data-theme='night'] {
 
 html[data-theme='warm'] {
   /* 护眼米黄 */
+  color-scheme: light;
   --t-paper: #fbf6e9;
   --t-ink: #1b1812;
   --t-bg: #ede4cb;
@@ -47,6 +50,7 @@ html[data-theme='warm'] {
 
 html[data-theme='print'] {
   /* 纯黑白印刷 */
+  color-scheme: light;
   --t-paper: #fafafa;
   --t-ink: #000000;
   --t-bg: #e0e0e0;
@@ -77,11 +81,18 @@ html[data-theme='print'] .pdf-canvas {
   --font-base: 'Helvetica Neue', 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Arial', sans-serif;
   --r: 0px; /* 圆角：直角 */
   --bw: 1px; /* 边框宽度 */
-  --line-w: 3px; /* 结构线宽度 */
+  --line-w: 2px; /* 结构线宽度：3px 在 13px 界面下过重，收至 2px 更利落 */
   --line-color: var(--ink);
   --group-line-w: 2px;
   --pop: 4px 4px 0 rgba(16, 16, 16, 0.9); /* 硬阴影 */
   --page-shadow: 0 6px 0 rgba(16, 16, 16, 0.16);
+
+  /* —— 控件节奏与交互（三风格共用，各风格按需覆写） —— */
+  --ctl-h: 28px; /* 工具栏控件统一高度：所有对齐以它为基准 */
+  --dur: 0.12s; /* 过渡时长 */
+  --ease: cubic-bezier(0.2, 0, 0, 1); /* 过渡曲线 */
+  --menu-in: 0.14s; /* 浮层入场 */
+  --focus-ring: var(--red); /* 键盘焦点环 */
   /* 标签功能色 */
   --tag-wrong: #d92d20; /* 错题 · 红 */
   --tag-important: #e8590c; /* 重点 · 橙 */
@@ -119,6 +130,12 @@ html[data-style='ink'] {
   --line-w: 1px;
   --line-color: color-mix(in srgb, var(--ink) 35%, transparent);
   --group-line-w: 1px;
+
+  /* 节奏：水墨笔画略厚，配慢晕染过渡 */
+  --ctl-h: 30px;
+  --dur: 0.32s;
+  --ease: ease;
+  --menu-in: 0.28s;
   /* 晕染：多层扩散阴影，模拟墨在水中晕开 */
   --pop: 0 2px 6px rgba(28, 26, 21, 0.08), 0 12px 36px rgba(28, 26, 21, 0.2);
   --page-shadow: 0 2px 6px rgba(28, 26, 21, 0.08), 0 8px 32px rgba(28, 26, 21, 0.22);
@@ -156,6 +173,12 @@ html[data-style='brutal'] {
   --group-line-w: 2px;
   --pop: 5px 5px 0 var(--ink);
   --page-shadow: 5px 5px 0 color-mix(in srgb, var(--ink) 85%, transparent);
+
+  /* 节奏：粗野要「啪」一下——快出、无缓入 */
+  --ctl-h: 30px;
+  --dur: 0.1s;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --menu-in: 0.1s;
   /* 高饱和撞色 */
   --tag-wrong: #ff5470;
   --tag-important: #ffb800;
@@ -193,22 +216,64 @@ body,
   color: var(--ink);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  accent-color: var(--red); /* 原生勾选框/滑块跟随强调色 */
 }
 
+/* 原生表单控件默认不继承字体：水墨风格下会掉回无衬线，这里统一 */
+input,
+button,
+textarea,
+select {
+  font-family: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--red) 26%, transparent);
+  color: var(--ink);
+}
+
+/* 键盘可达性：仅在键盘导航时显示焦点环（当前项目完全没有焦点态） */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 滚动条：由「实心黑条 + 3px 粗边」改为悬浮细条——常态半透明让位于内容，悬停才提亮 */
 ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--panel-2);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--ink);
-  border: 3px solid var(--panel-2);
-  border-radius: var(--r);
+  background: color-mix(in srgb, var(--ink) 26%, transparent);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--red);
+  background: color-mix(in srgb, var(--red) 65%, transparent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 浮层入场：所有下拉/弹出菜单共用 */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ---------- 应用骨架 ---------- */
@@ -244,21 +309,47 @@ body,
   display: none;
 }
 
+/* 工具栏控件统一高度：按钮 / 下拉 / 取色器全部对齐到同一条基线 */
+.toolbar .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ctl-h);
+  padding: 0 10px;
+  line-height: 1;
+}
+
 .tb-group {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 12px;
-  border-right: var(--group-line-w) solid var(--line-color);
+  padding: 0 11px;
   flex-shrink: 0;
   white-space: nowrap;
+}
+/* 分组分隔：从「通栏黑线」改为垂直居中的 18px 发丝线——工具栏不再被切成表格 */
+.tb-group + .tb-group::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: var(--group-line-w);
+  height: 18px;
+  background: var(--line-color);
+  opacity: 0.3;
 }
 .tb-group:first-child {
   padding-left: 0;
 }
 .tb-group:last-child {
-  border-right: none;
   padding-right: 0;
+}
+/* 已带分组标签的组不再画分隔线：否则「灰线 + 红标」两根竖线会紧挨着，看起来像噪声 */
+.tb-group + .tb-group:has(> .tb-label)::before {
+  display: none;
 }
 
 .tb-title {
@@ -269,20 +360,29 @@ body,
   white-space: nowrap;
 }
 
+/* 分组标签：字距拉开的小标签，用「前置竖标」替代原来的红色下划线
+   （下划线与按钮底边抢同一条视觉基线，是工具栏显脏的主因之一） */
 .tb-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.14em;
   color: var(--dim);
   white-space: nowrap;
-  margin-right: 2px;
-  border-bottom: 2px solid var(--red);
-  padding-bottom: 1px;
+  margin-right: 3px;
+}
+/* 这根竖标同时承担该组的分隔线职责，所以与 .tb-group 的分隔线等高 */
+.tb-label::before {
+  content: '';
+  width: var(--group-line-w);
+  height: 18px;
+  background: var(--red);
 }
 
 .tb-scale {
-  min-width: 48px;
+  min-width: 46px;
   text-align: center;
   font-size: 12px;
   font-weight: 600;
@@ -303,26 +403,22 @@ body,
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background 0.1s linear,
-    color 0.1s linear,
-    border-color 0.1s linear,
-    transform 0.1s linear,
-    box-shadow 0.1s linear;
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
-.btn:hover {
+.btn:hover:not(:disabled) {
   background: var(--ink);
   color: var(--paper);
 }
-.btn:active {
+.btn:active:not(:disabled) {
   transform: translate(1px, 1px);
 }
 .btn:disabled {
-  opacity: 0.35;
+  opacity: 0.32;
   cursor: not-allowed;
-}
-.btn:disabled:hover {
-  background: var(--paper);
-  color: var(--ink);
 }
 
 .btn.active {
@@ -396,7 +492,7 @@ body,
 .cp-swatch {
   width: 15px;
   height: 15px;
-  border: 1px solid var(--ink);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r);
   /* 内白描边：让白色等浅色在浅底上可见 */
   box-shadow: inset 0 0 0 2px var(--paper);
@@ -405,7 +501,7 @@ body,
 
 .cp-caret {
   font-size: 10px;
-  transition: transform 0.15s linear;
+  transition: transform var(--dur) var(--ease);
 }
 .cp-caret.open {
   transform: rotate(180deg);
@@ -420,12 +516,14 @@ body,
   border-radius: var(--r);
   box-shadow: var(--pop);
   padding: 10px;
+  animation: menu-in var(--menu-in) var(--ease);
 }
 
 .cp-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 7px;
+  /* 10px：给选中色块的 ::after 外圈留出余量，相邻色点不再互相压边 */
+  gap: 10px;
   margin-bottom: 10px;
 }
 
@@ -433,13 +531,13 @@ body,
   width: 100%;
   aspect-ratio: 1;
   padding: 0;
-  border: 1px solid var(--line-2);
+  border: var(--bw) solid var(--line-2);
   border-radius: var(--r);
   cursor: pointer;
   position: relative;
   transition:
-    transform 0.1s linear,
-    border-color 0.1s linear;
+    transform var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
 }
 .cp-swatch-btn:hover {
   transform: scale(1.12);
@@ -460,7 +558,7 @@ body,
   gap: 8px;
   font-size: 12px;
   color: var(--dim);
-  border-top: 1px solid var(--line-2);
+  border-top: var(--bw) solid var(--line-2);
   padding-top: 9px;
 }
 .cp-custom input[type='color'] {
@@ -517,7 +615,7 @@ html[data-style='brutal'] .cp-swatch-btn.active::after {
 
 .sel-caret {
   font-size: 10px;
-  transition: transform 0.15s linear;
+  transition: transform var(--dur) var(--ease);
 }
 .sel-caret.open {
   transform: rotate(180deg);
@@ -537,6 +635,7 @@ html[data-style='brutal'] .cp-swatch-btn.active::after {
   gap: 2px;
   max-height: 320px;
   overflow-y: auto;
+  animation: menu-in var(--menu-in) var(--ease);
 }
 
 /* ⋮ 菜单内的下拉框占满整行 */
@@ -552,7 +651,7 @@ html[data-style='brutal'] .cp-swatch-btn.active::after {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 6px 12px;
+  padding: 6px 10px;
   font-size: 12px;
   color: var(--ink);
   background: transparent;
@@ -561,8 +660,8 @@ html[data-style='brutal'] .cp-swatch-btn.active::after {
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background 0.12s linear,
-    color 0.12s linear;
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
 }
 .sel-opt:hover {
   background: var(--panel-2);
@@ -615,6 +714,7 @@ html[data-style='brutal'] .sel-trigger {
   flex-direction: column;
   gap: 12px;
   z-index: 60;
+  animation: menu-in var(--menu-in) var(--ease);
 }
 
 .more-title {
@@ -659,25 +759,38 @@ html[data-style='brutal'] .sel-trigger {
 }
 
 .divider {
-  flex: 0 0 7px;
+  flex: 0 0 8px;
   cursor: col-resize;
   position: relative;
-  background: var(--line-2);
+  background: var(--panel-2);
+  border-left: var(--bw) solid var(--line-2);
+  border-right: var(--bw) solid var(--line-2);
+  transition: background var(--dur) var(--ease);
 }
+/* 抓握点：平时安静，悬停才亮起来 */
 .divider::after {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 3px;
-  width: 1px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 34px;
   background: var(--ink);
-  opacity: 0.5;
-  transition: background 0.1s linear, opacity 0.1s linear;
+  opacity: 0.18;
+  transition:
+    opacity var(--dur) var(--ease),
+    background var(--dur) var(--ease),
+    width var(--dur) var(--ease);
 }
 .divider:hover,
 .split-pane.dragging .divider {
+  background: color-mix(in srgb, var(--red) 16%, var(--panel-2));
+}
+.divider:hover::after,
+.split-pane.dragging .divider::after {
   background: var(--red);
+  opacity: 1;
 }
 
 /* ---------- PDF Viewer ---------- */
@@ -694,18 +807,19 @@ html[data-style='brutal'] .sel-trigger {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   height: 40px;
-  padding: 0 16px;
+  padding: 0 14px; /* 与工具栏左右边距对齐，栏头与工具栏的竖线才能连成一条 */
   background: var(--paper);
   border-bottom: var(--line-w) solid var(--line-color);
 }
 
 .vh-side {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  line-height: 1.5;
+  letter-spacing: 0.1em;
   background: var(--red);
   color: #fff;
   padding: 2px 8px;
@@ -723,12 +837,42 @@ html[data-style='brutal'] .sel-trigger {
   color: var(--ink);
 }
 
+/* 页码：用风格 token 而不是硬编码 6px 圆角——瑞士风格应保持直角 */
 .vh-page {
   flex-shrink: 0;
   font-size: 12px;
   font-weight: 700;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  background: transparent;
+  border: var(--bw) solid transparent;
+  border-radius: var(--r);
+  padding: 1px 7px;
+  cursor: pointer;
+  transition:
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.vh-page:hover {
+  background: var(--panel-2);
+  border-color: var(--line-2);
+}
+
+.vh-jump {
+  flex-shrink: 0;
+  width: 58px;
+  font-size: 12px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--r);
+  padding: 1px 4px;
+  outline: none;
 }
 
 .viewer-placeholder {
@@ -741,16 +885,19 @@ html[data-style='brutal'] .sel-trigger {
   background: var(--bg);
 }
 
+/* 空状态：由「22px/800 的喊话」改为安静的引导层级 */
 .placeholder-title {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   color: var(--ink);
+  opacity: 0.7;
 }
 
 .placeholder-text {
   color: var(--dim);
-  font-size: 13px;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
 }
 
 .placeholder-error {
@@ -815,6 +962,10 @@ html[data-style='brutal'] .sel-trigger {
 .ink-canvas.ink-pen {
   cursor: crosshair;
 }
+/* 画笔橡皮擦：删除经过的整条笔迹 */
+.ink-canvas.ink-erase {
+  cursor: cell;
+}
 .ink-canvas.ink-text {
   cursor: text;
 }
@@ -823,13 +974,15 @@ html[data-style='brutal'] .sel-trigger {
   cursor: cell;
 }
 
+/* 页角页码：底色是 var(--ink)，夜间主题下它是浅色——
+   所以文字必须用「纸色」而不是固定白，否则变成白底白字 */
 .page-no {
   position: absolute;
   top: 6px;
   right: 8px;
   font-size: 11px;
   font-weight: 700;
-  color: #fff;
+  color: var(--paper);
   background: var(--ink);
   padding: 2px 8px;
   border-radius: var(--r);
@@ -864,15 +1017,17 @@ html[data-style='brutal'] .sel-trigger {
   cursor: move;
   line-height: 1.45;
   max-width: 60%;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid var(--ink);
+  /* 纸色半透明底：随主题与风格派生，夜间主题下不再是刺眼白块 */
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r);
-  padding: 2px 4px;
+  padding: 2px 5px;
   user-select: none;
   -webkit-user-select: none;
+  transition: background var(--dur) var(--ease);
 }
 .text-box:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
 }
 
 .tb-text {
@@ -904,9 +1059,10 @@ html[data-style='brutal'] .sel-trigger {
 .tb-input {
   width: 200px;
   min-height: 1.45em;
-  background: #ffffff;
-  color: #c62828;
-  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--red);
+  /* 编辑态比常态粗一档：既是强调，也随风格一起放大/收窄 */
+  border: calc(var(--bw) + 1px) solid var(--ink);
   border-radius: var(--r);
   padding: 2px 6px;
   outline: none;
@@ -922,7 +1078,7 @@ html[data-style='brutal'] .sel-trigger {
   display: flex;
   flex-direction: column;
   background: var(--paper);
-  border-left: 2px solid var(--ink);
+  border-left: var(--line-w) solid var(--line-color);
   min-height: 0;
 }
 
@@ -987,7 +1143,7 @@ html[data-style='brutal'] .sel-trigger {
   display: flex;
   gap: 6px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--line-2);
+  border-bottom: var(--bw) solid var(--line-2);
   flex-wrap: wrap;
 }
 
@@ -1002,9 +1158,9 @@ html[data-style='brutal'] .sel-trigger {
   color: var(--ink);
   cursor: pointer;
   transition:
-    background 0.1s linear,
-    color 0.1s linear,
-    border-color 0.1s linear;
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
 }
 .chip:hover {
   background: var(--panel-2);
@@ -1038,18 +1194,23 @@ html[data-style='brutal'] .sel-trigger {
   list-style: none;
 }
 
-/* 书签卡片：左侧 4px 功能色条标识标签 */
+/* 书签卡片：左侧 4px 功能色条标识标签。
+   注意：左条宽度单独声明，不要用 border 简写——简写会把 4px 压回 var(--bw) */
 .bm-item {
   position: relative;
-  border: 1px solid var(--line-2);
-  border-left: 4px solid transparent;
+  border: var(--bw) solid var(--line-2);
+  border-left-width: 4px;
+  border-left-color: transparent;
   border-radius: var(--r);
   margin-bottom: 10px;
   background: var(--paper);
-  transition: border-color 0.1s linear;
+  transition:
+    border-color var(--dur) var(--ease),
+    background var(--dur) var(--ease);
 }
 .bm-item:hover {
   border-color: var(--ink);
+  background: color-mix(in srgb, var(--panel-2) 45%, var(--paper));
 }
 .tag-wrong {
   border-left-color: var(--tag-wrong);
@@ -1090,11 +1251,13 @@ html[data-style='brutal'] .sel-trigger {
   font-weight: 400;
 }
 
+/* 「当前」徽标：与 .page-no 同源问题——底色是 var(--ink)，
+   夜间主题下它是浅色，所以文字必须用纸色 */
 .bm-current {
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 700;
-  color: #fff;
+  color: var(--paper);
   background: var(--ink);
   padding: 1px 7px;
   border-radius: var(--r);
@@ -1119,7 +1282,7 @@ html[data-style='brutal'] .sel-trigger {
   display: flex;
   gap: 8px;
   padding: 8px 12px;
-  border-top: 1px solid var(--line-2);
+  border-top: var(--bw) solid var(--line-2);
   align-items: flex-start;
 }
 
@@ -1213,7 +1376,9 @@ html[data-style='brutal'] .sel-trigger {
 .modal-mask {
   position: fixed;
   inset: 0;
-  background: rgba(10, 10, 10, 0.5);
+  /* 用墨色派生而非固定黑：各主题下的遮罩浓度统一 */
+  background: color-mix(in srgb, var(--ink) 44%, transparent);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1227,6 +1392,7 @@ html[data-style='brutal'] .sel-trigger {
   border-radius: var(--r);
   padding: 22px;
   box-shadow: var(--pop);
+  animation: menu-in var(--menu-in) var(--ease);
 }
 .modal h3 {
   margin: 0 0 8px;
@@ -1250,6 +1416,7 @@ html[data-style='brutal'] .sel-trigger {
   border: var(--bw) solid var(--ink);
   border-radius: var(--r);
   outline: none;
+  transition: border-color var(--dur) var(--ease);
 }
 .modal-input:focus {
   border-color: var(--red);
@@ -1294,7 +1461,7 @@ html[data-style='brutal'] .sel-trigger {
 }
 .help-table td {
   padding: 7px 8px;
-  border-bottom: 1px solid var(--line-2);
+  border-bottom: var(--bw) solid var(--line-2);
   vertical-align: top;
 }
 .help-table tr:last-child td {
@@ -1445,11 +1612,14 @@ html[data-style='ink'] .toolbar::after {
 
 /* 组标签：朱砂小印 */
 html[data-style='ink'] .tb-label {
-  border-bottom: none;
   color: var(--red);
   font-family: var(--font-title);
   font-size: 11px;
   letter-spacing: 0.2em;
+}
+/* 水墨的分组标识由朱砂字色承担，不再叠加竖标（重复且抢眼） */
+html[data-style='ink'] .tb-label::before {
+  display: none;
 }
 
 /* 标题：楷书 */
@@ -1463,17 +1633,18 @@ html[data-style='ink'] .tb-title {
 html[data-style='ink'] .btn {
   font-weight: 400;
   font-family: var(--font-base);
-  border-color: rgba(28, 26, 21, 0.3);
-  background: rgba(255, 255, 255, 0.25);
+  /* 由墨色/纸色派生，而不是固定 rgba——夜间主题下不会出现「发白的浮块」 */
+  border-color: color-mix(in srgb, var(--ink) 30%, transparent);
+  background: color-mix(in srgb, var(--paper) 55%, transparent);
   transition:
-    background 0.35s ease,
-    border-color 0.35s ease,
-    color 0.35s ease,
-    box-shadow 0.35s ease;
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
-html[data-style='ink'] .btn:hover {
-  background: rgba(28, 26, 21, 0.07);
-  border-color: rgba(28, 26, 21, 0.55);
+html[data-style='ink'] .btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 55%, transparent);
   color: var(--ink);
 }
 html[data-style='ink'] .btn.active {
@@ -1544,30 +1715,34 @@ html[data-style='ink'] .modal-help h4 {
 html[data-style='ink'] .chip {
   font-weight: 400;
   border-radius: 999px;
-  border-color: rgba(28, 26, 21, 0.3);
+  border-color: color-mix(in srgb, var(--ink) 30%, transparent);
 }
 html[data-style='ink'] .chip:hover {
-  background: rgba(28, 26, 21, 0.07);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
 }
 
 /* 页码浮标：淡墨渲染 */
 html[data-style='ink'] .page-indicator {
-  background: rgba(28, 26, 21, 0.68);
-  color: #f8f4e9;
+  background: color-mix(in srgb, var(--ink) 68%, transparent);
+  color: var(--paper);
   backdrop-filter: blur(3px);
 }
 
 html[data-style='ink'] .page-no {
-  background: rgba(28, 26, 21, 0.6);
+  background: color-mix(in srgb, var(--ink) 60%, transparent);
 }
 
-/* 分隔条与滚动条：淡墨 */
+/* 分隔条与滚动条：淡墨。水墨不用外框线，靠抓握点示意 */
 html[data-style='ink'] .divider {
-  background: rgba(28, 26, 21, 0.12);
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  border-color: transparent;
+}
+html[data-style='ink'] .divider::after {
+  opacity: 0.12;
 }
 html[data-style='ink'] .divider:hover,
 html[data-style='ink'] .split-pane.dragging .divider {
-  background: rgba(166, 58, 42, 0.55);
+  background: color-mix(in srgb, var(--red) 26%, transparent);
 }
 
 /* 水墨标签：墨点胶囊，透明底，边框用文字色淡化（currentColor），慢晕染 */
@@ -1603,14 +1778,15 @@ html[data-style='swiss'] .bm-tagbtn.active {
 
 html[data-style='brutal'] .btn {
   font-weight: 700;
-  box-shadow: 3px 3px 0 var(--ink);
+  /* 静止态由 3px 收到 2px：一排二十个按钮同时投影时，3px 会互相咬合成毛刺 */
+  box-shadow: 2px 2px 0 var(--ink);
   background: var(--paper);
 }
-html[data-style='brutal'] .btn:hover {
+html[data-style='brutal'] .btn:hover:not(:disabled) {
   background: #ffde59;
   color: #000;
   border-color: var(--ink);
-  transform: translate(2px, 2px);
+  transform: translate(1px, 1px);
   box-shadow: 1px 1px 0 var(--ink);
 }
 html[data-style='brutal'] .btn.active {
@@ -1618,8 +1794,8 @@ html[data-style='brutal'] .btn.active {
   border-color: var(--ink);
   color: #000;
 }
-html[data-style='brutal'] .btn:active {
-  transform: translate(3px, 3px);
+html[data-style='brutal'] .btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
   box-shadow: 0 0 0 var(--ink);
 }
 
@@ -1640,16 +1816,21 @@ html[data-style='brutal'] .tb-title {
   color: #000;
   padding: 3px 10px;
   border: var(--bw) solid var(--ink);
-  box-shadow: 3px 3px 0 var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
 }
 
+/* 分组标签：由实心撞色块改为「黑底小章」。
+   原先标题黄块 + 标签青块 + 栏头粉块同处一行，三个饱和色互相打架；
+   若改成描边又会与未激活按钮难以区分，故用黑底——黑在 brutal 里是结构色，不参与撞色 */
 html[data-style='brutal'] .tb-label {
-  border-bottom: none;
-  background: #23a094;
-  color: #fff;
+  background: var(--ink);
+  color: var(--paper);
   padding: 2px 7px;
   border: var(--bw) solid var(--ink);
-  box-shadow: 2px 2px 0 var(--ink);
+  box-shadow: none;
+}
+html[data-style='brutal'] .tb-label::before {
+  display: none;
 }
 
 html[data-style='brutal'] .vh-side {
@@ -1681,13 +1862,17 @@ html[data-style='brutal'] .chip:hover {
 }
 
 html[data-style='brutal'] .bm-item {
-  border: var(--bw) solid var(--ink);
+  /* 不用 border 简写：它会把左侧 4px 标签色条压回 var(--bw) */
+  border-color: var(--ink);
+  border-left-width: 4px;
   box-shadow: 4px 4px 0 var(--ink);
 }
 
+/* 青底固定为浅色块，文字统一用黑（夜间主题下 var(--paper) 会变成近黑，压不住对比） */
 html[data-style='brutal'] .bm-current {
   background: #23a094;
-  border: 1px solid var(--ink);
+  border: var(--bw) solid var(--ink);
+  color: #000;
 }
 
 html[data-style='brutal'] .modal {
@@ -1698,8 +1883,14 @@ html[data-style='brutal'] .help-table td {
   border-bottom: var(--bw) solid var(--ink);
 }
 
+/* 通栏纯黑分隔条过于霸道：改为浅底 + 加粗抓握点 */
 html[data-style='brutal'] .divider {
-  background: var(--ink);
+  background: var(--panel-2);
+  border-color: var(--ink);
+}
+html[data-style='brutal'] .divider::after {
+  width: 3px;
+  opacity: 0.55;
 }
 
 /* 粗野标签：粗黑边 + 硬阴影按压，激活功能色填充保持黑边 */
@@ -1714,4 +1905,16 @@ html[data-style='brutal'] .bm-tagbtn:hover {
 }
 html[data-style='brutal'] .bm-tagbtn.active {
   border-color: var(--ink);
+}
+
+/* ---------- 无障碍：尊重系统「减少动态效果」 ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

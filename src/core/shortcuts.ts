@@ -14,6 +14,10 @@ export type ShortcutAction =
   | 'addBookmark'
   | 'toggleBookmarks'
   | 'syncToggle'
+  | 'pageNext'
+  | 'pagePrev'
+  | 'fitWidth'
+  | 'focusToggle'
 
 export const SHORTCUT_DEFAULTS: Record<ShortcutAction, string> = {
   undo: 'ctrl+z',
@@ -28,7 +32,11 @@ export const SHORTCUT_DEFAULTS: Record<ShortcutAction, string> = {
   maskToggle: 'h',
   addBookmark: 'd',
   toggleBookmarks: 'k',
-  syncToggle: 's'
+  syncToggle: 's',
+  pageNext: 'pagedown',
+  pagePrev: 'pageup',
+  fitWidth: 'ctrl+0',
+  focusToggle: 'f2'
 }
 
 export const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
@@ -44,7 +52,11 @@ export const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
   maskToggle: '显示/隐藏解析',
   addBookmark: '添加书签',
   toggleBookmarks: '书签面板',
-  syncToggle: '开关同步'
+  syncToggle: '开关同步',
+  pageNext: '主侧下一页',
+  pagePrev: '主侧上一页',
+  fitWidth: '适应宽度',
+  focusToggle: '专注模式（双栏/仅题主/仅解析）'
 }
 
 export const SHORTCUT_ACTIONS = Object.keys(SHORTCUT_LABELS) as ShortcutAction[]

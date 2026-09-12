@@ -19,6 +19,8 @@ export interface ViewerApi {
   applyPageFloat(pf: number): void
   applyScale(scale: number): void
   gotoPage(pageIndex: number): void
+  /** 适应宽度：按当前页基准宽度铺满栏宽 */
+  fitWidth(): void
 }
 
 export type OpenResult = 'ok' | 'need-password' | 'error'

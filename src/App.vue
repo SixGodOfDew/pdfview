@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watchEffect } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue'
 import Toolbar from '@/components/Toolbar.vue'
 import SplitPane from '@/components/SplitPane.vue'
 import PdfViewer from '@/components/PdfViewer.vue'
@@ -12,8 +12,10 @@ import { useViewerStore } from '@/stores/viewer'
 import { useBookmarkStore } from '@/stores/bookmark'
 import { useMaskStore } from '@/stores/mask'
 import { useAnnotationStore } from '@/stores/annotation'
+import { useProgressStore } from '@/stores/progress'
 import { useBossModeStore } from '@/stores/bossMode'
 import { syncEngine } from '@/core/sync/SyncEngine'
+import { flushAll } from '@/storage/DataStore'
 import {
   SHORTCUT_ACTIONS,
   eventToBinding,
@@ -26,6 +28,7 @@ const viewer = useViewerStore()
 const bookmark = useBookmarkStore()
 const mask = useMaskStore()
 const annotation = useAnnotationStore()
+const progress = useProgressStore()
 const boss = useBossModeStore()
 
 const showBookmarks = ref(false)
@@ -40,6 +43,21 @@ syncEngine.applyToSlave = (pf: number) => {
   const slave: MasterSide = settings.master === 'question' ? 'answer' : 'question'
   viewer.apis[slave]?.applyPageFloat(pf)
 }
+
+// —— 专注模式：从单栏切回双栏时，把主侧位置重新同步给另一侧 ——
+watch(
+  () => settings.paneLayout,
+  (layout, prev) => {
+    if (layout !== 'both' || prev === 'both') return
+    const master = settings.master
+    const slave: MasterSide = master === 'question' ? 'answer' : 'question'
+    const pf = viewer.summary(master).pageFloat
+    // 被隐藏的一侧在 display:none 时无法设置 scrollTop，等恢复布局后再定位
+    void nextTick(() => {
+      requestAnimationFrame(() => viewer.apis[slave]?.applyPageFloat(pf))
+    })
+  }
+)
 
 // —— 主题与风格应用 ——
 watchEffect(() => {
@@ -159,6 +177,15 @@ function cycleMask(): void {
   mask.setMode(order[(i + 1) % order.length])
 }
 
+/** 主侧翻页（整页对齐到页首） */
+function stepPage(delta: number): void {
+  const side = settings.master
+  const s = viewer.summary(side)
+  if (!s.loaded || s.numPages === 0) return
+  const target = Math.floor(s.pageFloat) + delta
+  viewer.apis[side]?.gotoPage(Math.min(s.numPages - 1, Math.max(0, target)))
+}
+
 function executeShortcut(action: ShortcutAction): void {
   switch (action) {
     case 'undo':
@@ -200,6 +227,18 @@ function executeShortcut(action: ShortcutAction): void {
     case 'syncToggle':
       settings.toggleSync()
       break
+    case 'pageNext':
+      stepPage(1)
+      break
+    case 'pagePrev':
+      stepPage(-1)
+      break
+    case 'fitWidth':
+      viewer.apis[settings.master]?.fitWidth()
+      break
+    case 'focusToggle':
+      settings.cyclePaneLayout()
+      break
   }
 }
 
@@ -219,11 +258,26 @@ function onKeydown(e: KeyboardEvent): void {
   }
 }
 
+/** 退出前把聚合中的阅读进度与各 JSON 待写数据落盘，避免丢最后一段 */
+function persistAll(): void {
+  progress.persistNow()
+  void flushAll()
+}
+
 onMounted(() => {
   void settings.load()
   void bookmark.load()
   void annotation.load()
+  void mask.load()
+  void progress.load()
   window.addEventListener('keydown', onKeydown)
+  window.addEventListener('beforeunload', persistAll)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('beforeunload', persistAll)
+  persistAll()
 })
 
 // dev 冒烟测试钩子：暴露 store 供主进程 executeJavaScript 驱动

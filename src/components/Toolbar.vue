@@ -11,6 +11,7 @@ import {
   HOVER_SHAPES,
   HOVER_SHAPE_LABELS,
   MASK_MODES,
+  PANE_LAYOUT_LABELS,
   STYLE_IDS,
   STYLE_LABELS,
   THEME_IDS
@@ -52,6 +53,22 @@ const TOOLS: ToolId[] = ['browse', 'pen', 'text']
 function zoom(delta: number): void {
   const side = settings.master
   viewer.requestScale(side, viewer.summary(side).scale + delta)
+}
+
+/** 适应宽度：按主侧当前页铺满栏宽 */
+function fitWidth(): void {
+  viewer.apis[settings.master]?.fitWidth()
+}
+
+/** 恢复遮罩：只重置当前解析这本，避免误清掉其它试卷的擦除记录 */
+function resetMask(): void {
+  const path = viewer.right.path
+  if (path) mask.clearDoc(path)
+  else mask.clearAll()
+}
+
+function onPenModeChange(v: string | number): void {
+  annotation.setPenMode(v as 'draw' | 'erase')
 }
 
 function onPenWidthChange(v: string | number): void {
@@ -152,6 +169,7 @@ onBeforeUnmount(() => {
       <button class="btn" title="缩小（Ctrl+滚轮）" @click="zoom(-0.1)">−</button>
       <span class="tb-scale">{{ Math.round(viewer.summary(settings.master).scale * 100) }}%</span>
       <button class="btn" title="放大（Ctrl+滚轮）" @click="zoom(0.1)">＋</button>
+      <button class="btn" title="适应宽度（Ctrl+0）" @click="fitWidth">适应宽</button>
       <button
         class="btn"
         :class="{ active: settings.zoomSync }"
@@ -159,6 +177,21 @@ onBeforeUnmount(() => {
         @click="settings.toggleZoomSync()"
       >
         联动
+      </button>
+    </div>
+
+    <div class="tb-group">
+      <button
+        class="btn"
+        :class="{ active: settings.paneLayout !== 'both' }"
+        :title="
+          '专注模式：' +
+          PANE_LAYOUT_LABELS[settings.paneLayout] +
+          '（F2 循环 双栏 / 仅题本 / 仅解析）'
+        "
+        @click="settings.cyclePaneLayout()"
+      >
+        {{ PANE_LAYOUT_LABELS[settings.paneLayout] }}
       </button>
     </div>
 
@@ -183,6 +216,16 @@ onBeforeUnmount(() => {
         撤回
       </button>
       <template v-if="annotation.activeTool === 'pen'">
+        <SelectMenu
+          :model-value="annotation.penMode"
+          :options="[
+            { value: 'draw', label: '绘制' },
+            { value: 'erase', label: '擦除' }
+          ]"
+          title="画笔模式：绘制或擦除笔迹（擦除可撤回）"
+          :min-width="76"
+          @update:model-value="onPenModeChange"
+        />
         <ColorPicker
           :model-value="annotation.penColor"
           title="画笔颜色"
@@ -229,7 +272,7 @@ onBeforeUnmount(() => {
       >
         {{ mask.enabled ? '显' : '隐' }}
       </button>
-      <button class="btn" title="恢复全部遮罩" @click="mask.clearAll()">重置</button>
+      <button class="btn" title="恢复当前解析这本的全部遮罩" @click="resetMask">重置</button>
     </div>
 
     <div class="tb-group">
