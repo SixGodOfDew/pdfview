@@ -79,6 +79,15 @@ export class PageScaleStrategy implements SyncStrategy {
   }
 }
 
+/** addAnchor 的结果：新增 / 覆盖同位置的旧锚点 / 因破坏单调性被拒绝 */
+export type AnchorAddStatus = 'added' | 'replaced' | 'rejected'
+
+export interface AnchorAddResult {
+  status: AnchorAddStatus
+  /** 该锚点在升序表中的下标（rejected 时为 -1） */
+  index: number
+}
+
 /**
  * 锚点校准：把「一键对齐」记录下的对应点连成分段线性映射。
  * - 0 个锚点：退化为比例同步（保证刚切到该模式时行为可预期）
@@ -92,20 +101,25 @@ export class AnchorStrategy implements SyncStrategy {
   readonly kind = 'anchor' as const
   anchors: SyncAnchor[] = []
 
-  /** 记录一个锚点。同一位置（0.5 页内）覆盖旧值；破坏单调性则拒绝并返回 false */
-  add(qPage: number, aPage: number): boolean {
+  /**
+   * 记录一个锚点。
+   * 同一位置（0.5 页内）会**覆盖**旧锚点——调用方必须据此如实反馈，
+   * 否则用户在页内连按两次「对齐」会以为记了两个锚点（实际只有一个）。
+   */
+  add(qPage: number, aPage: number): AnchorAddResult {
     const backup = this.anchors.slice()
+    const entry: SyncAnchor = { qPage, aPage }
     const i = this.anchors.findIndex((a) => Math.abs(a.qPage - qPage) < 0.5)
-    if (i >= 0) this.anchors[i] = { qPage, aPage }
-    else this.anchors.push({ qPage, aPage })
+    if (i >= 0) this.anchors[i] = entry
+    else this.anchors.push(entry)
     this.anchors.sort((x, y) => x.qPage - y.qPage)
 
     const monotonic = this.anchors.every((a, k, arr) => k === 0 || a.aPage > arr[k - 1].aPage)
     if (!monotonic) {
       this.anchors = backup
-      return false
+      return { status: 'rejected', index: -1 }
     }
-    return true
+    return { status: i >= 0 ? 'replaced' : 'added', index: this.anchors.indexOf(entry) }
   }
 
   clear(): void {
@@ -174,8 +188,11 @@ export class SyncEngine {
     return this.anchor.anchors
   }
 
-  /** 一键对齐：把当前双侧页浮点记为锚点。返回 false 表示与已有锚点冲突 */
-  addAnchor(qPage: number, aPage: number): boolean {
+  /**
+   * 一键对齐：把当前双侧页浮点记为锚点。
+   * 返回结果需如实反馈给用户（同位置会覆盖旧锚点，不是新增）。
+   */
+  addAnchor(qPage: number, aPage: number): AnchorAddResult {
     return this.anchor.add(qPage, aPage)
   }
 

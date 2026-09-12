@@ -2,9 +2,19 @@
    PDF双栏刷题阅读器 · 主题 × 风格 双层设计系统
    - 主题（data-theme）：纸墨色彩（日/夜/米黄/印刷）
    - 风格（data-style）：形状/字体/线条/交互行为
-     ① swiss   瑞士国际主义：直角 · 粗黑结构线 · 黑白反转 · 硬阴影
-     ② ink     中国水墨：大圆角 · 衬线宋体 · 细墨线 · 晕染阴影 · 朱砂点缀
-     ③ brutal  新粗野主义：粗黑边 · 高饱和撞色 · 硬阴影按压 · 纯色块
+
+   【结构派】靠线条与边框划分区域
+     ① swiss     瑞士国际主义：直角 · 粗黑结构线 · 黑白反转 · 硬阴影
+     ② ink       中国水墨：大圆角 · 衬线宋体 · 细墨线 · 晕染阴影 · 朱砂点缀
+     ③ brutal    新粗野主义：粗黑边 · 高饱和撞色 · 硬阴影按压 · 纯色块
+     ④ editorial 杂志编排：衬线标题 · 无衬线正文 · 发丝细线 · 大留白 · 强调色小面积
+
+   【材质派】靠光影与透明度塑形，不依赖边框
+     ⑤ glass     玻璃态：半透明面板 · 背景模糊 · 高光边 · 柔和多层投影
+     ⑥ soft      柔光：无边框 · 双向柔和阴影 · 同色系塑形（新拟态）
+
+   叠加顺序：主题变量 → 风格 token → 组件（用 token）→ 风格级组件覆盖。
+   新增风格只需写「一块 token + 一节组件覆盖」，其余组件自动继承 token。
    ========================================================================== */
 
 /* ---------- 主题变量（纸墨 · 供风格派生） ---------- */
@@ -189,6 +199,172 @@ html[data-style='brutal'] {
   --primary-hover-fg: #000000;
   --mask-active-bg: #ff90e8;
   --mask-active-fg: #000000;
+}
+
+/* ---------- 风格 token · ④ 杂志编排 ---------- */
+/* 杂志 = 主题纸墨微偏冷 + 衬线标题/无衬线正文 + 发丝线 + 大留白 */
+
+html[data-style='editorial'] {
+  /* 纸墨：往冷白偏一点点，像哑光杂志纸 */
+  --paper: color-mix(in srgb, var(--t-paper) 97%, #eef1f5 3%);
+  --ink: color-mix(in srgb, var(--t-ink) 94%, #1a1f26 6%);
+  --bg: color-mix(in srgb, var(--t-bg) 94%, #dfe3e9 6%);
+  --panel-2: color-mix(in srgb, var(--t-panel2) 94%, #e2e6ec 6%);
+  --dim: var(--t-dim);
+  --line-2: color-mix(in srgb, var(--ink) 14%, transparent);
+  --red: var(--t-red);
+  --page-bg: color-mix(in srgb, var(--t-pagebg) 94%, #dfe3e9 6%);
+
+  /* 排版：标题衬线、正文无衬线——与水墨的「正文宋体」方向相反，避免撞车 */
+  --font-base: 'Inter', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-title: 'Georgia', 'Times New Roman', 'Songti SC', 'STSong', serif;
+
+  /* 形状：近乎直角 + 发丝线。杂志的「细」不靠透明度，靠线宽与留白 */
+  --r: 2px;
+  --bw: 1px;
+  --line-w: 1px;
+  --line-color: color-mix(in srgb, var(--ink) 22%, transparent);
+  --group-line-w: 1px;
+
+  /* 节奏：从容——比瑞士慢、比水墨快 */
+  --ctl-h: 28px;
+  --dur: 0.18s;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --menu-in: 0.2s;
+
+  /* 投影：大而虚，像悬浮的一张纸而不是一块砖 */
+  --pop: 0 1px 2px rgba(20, 24, 30, 0.08), 0 14px 40px rgba(20, 24, 30, 0.14);
+  --page-shadow: 0 1px 2px rgba(20, 24, 30, 0.06), 0 10px 30px rgba(20, 24, 30, 0.12);
+
+  --focus-ring: var(--red);
+
+  /* 印厂四色：比瑞士的荧光红更沉 */
+  --tag-wrong: #c02626;
+  --tag-important: #c2681a;
+  --tag-doubt: #2b5fa8;
+  --primary-bg: var(--ink);
+  --primary-fg: var(--paper);
+  --primary-hover: var(--red);
+  --primary-hover-fg: #fff;
+  --mask-active-bg: var(--red);
+  --mask-active-fg: #fff;
+}
+
+/* ---------- 风格 token · ⑤ 玻璃态 ---------- */
+/* 玻璃 = 纸墨直通主题 + 半透明面板 + 背景模糊 + 高光边。
+   注意：--paper / --panel-2 保持不透明——它们同时承担「文字色」（如 .page-no 用
+   var(--paper) 当字色），一旦带 alpha 会把文字也做半透明。半透明只走 --glass-surface。 */
+
+html[data-style='glass'] {
+  --paper: var(--t-paper);
+  --ink: var(--t-ink);
+  --bg: var(--t-bg);
+  --panel-2: var(--t-panel2);
+  --dim: var(--t-dim);
+  --line-2: var(--t-line2);
+  --red: var(--t-red);
+  --page-bg: var(--t-pagebg);
+
+  --font-base: 'Inter', -apple-system, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* 形状：中大圆角 + 极细边。玻璃的边界由「高光边 + 投影」给出，不靠线宽 */
+  --r: 12px;
+  --bw: 1px;
+  --line-w: 1px;
+  --line-color: color-mix(in srgb, var(--ink) 10%, transparent);
+  --group-line-w: 1px;
+
+  --ctl-h: 30px;
+  --dur: 0.24s;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --menu-in: 0.22s;
+
+  /* 投影：近距接触阴影 + 远距扩散，模拟「浮起一层玻璃」 */
+  --pop: 0 1px 2px rgba(10, 14, 20, 0.1), 0 12px 32px rgba(10, 14, 20, 0.22);
+  --page-shadow: 0 2px 6px rgba(10, 14, 20, 0.1), 0 14px 40px rgba(10, 14, 20, 0.18);
+
+  /* —— 玻璃专属 token —— */
+  --glass-blur: 18px; /* 背景模糊半径 */
+  --glass-saturate: 1.7; /* 背景饱和增强：透过玻璃的颜色更「透」 */
+  --glass-surface: color-mix(in srgb, var(--t-paper) 76%, transparent); /* 主面板 */
+  --glass-surface-strong: color-mix(in srgb, var(--t-paper) 88%, transparent); /* 浮层 */
+  --glass-edge: rgba(255, 255, 255, 0.45); /* 顶部高光边（浅色主题下偏弱，分隔主要靠边框） */
+
+  --focus-ring: var(--red);
+
+  --tag-wrong: #e5484d;
+  --tag-important: #f0883e;
+  --tag-doubt: #4c7fe8;
+  --primary-bg: var(--red);
+  --primary-fg: #fff;
+  --primary-hover: color-mix(in srgb, var(--red) 82%, #000);
+  --primary-hover-fg: #fff;
+  --mask-active-bg: var(--red);
+  --mask-active-fg: #fff;
+}
+
+/* ---------- 风格 token · ⑥ 柔光（新拟态） ---------- */
+/* 柔光 = 无边框 + 双向阴影。核心约束：控件底色必须「贴近背景」，否则光影无处依附 */
+
+html[data-style='soft'] {
+  /* 面板向背景靠拢：只比背景亮一档，凸凹全靠阴影而不是色差 */
+  --paper: color-mix(in srgb, var(--t-bg) 70%, var(--t-paper) 30%);
+  --ink: var(--t-ink);
+  --bg: var(--t-bg);
+  --panel-2: color-mix(in srgb, var(--t-bg) 62%, var(--t-panel2) 38%);
+  --dim: var(--t-dim);
+  --line-2: color-mix(in srgb, var(--ink) 9%, transparent);
+  --red: var(--t-red);
+  --page-bg: color-mix(in srgb, var(--t-pagebg) 86%, var(--t-bg) 14%);
+
+  --font-base: 'Inter', 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* 形状：小控件完全无边框（--bw=0），大分区仅留一条极淡的线防止糊成一片 */
+  --r: 14px;
+  --bw: 0px;
+  --line-w: 1px;
+  --line-color: color-mix(in srgb, var(--ink) 9%, transparent);
+  --group-line-w: 0px;
+
+  --ctl-h: 30px;
+  --dur: 0.22s;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --menu-in: 0.22s;
+
+  /* —— 柔光专属 token：两个方向的光源 —— */
+  --soft-light: color-mix(in srgb, var(--bg) 86%, #ffffff);
+  --soft-dark: color-mix(in srgb, var(--bg) 84%, #000000);
+  /* 凸起（按钮/卡片/浮层）与凹陷（输入框/激活态） */
+  --soft-out: 5px 5px 12px var(--soft-dark), -4px -4px 10px var(--soft-light);
+  --soft-out-sm: 3px 3px 7px var(--soft-dark), -3px -3px 7px var(--soft-light);
+  --soft-in: inset 4px 4px 9px var(--soft-dark), inset -4px -4px 9px var(--soft-light);
+
+  --pop: 8px 8px 22px var(--soft-dark), -6px -6px 18px var(--soft-light);
+  --page-shadow: 0 4px 14px color-mix(in srgb, var(--soft-dark) 75%, transparent);
+
+  --focus-ring: color-mix(in srgb, var(--red) 72%, transparent);
+
+  --tag-wrong: var(--t-red);
+  --tag-important: #c2681a;
+  --tag-doubt: #3563b8;
+  --primary-bg: color-mix(in srgb, var(--red) 88%, var(--t-bg));
+  --primary-fg: #fff;
+  --primary-hover: color-mix(in srgb, var(--red) 74%, var(--t-bg));
+  --primary-hover-fg: #fff;
+  --mask-active-bg: color-mix(in srgb, var(--red) 82%, var(--t-bg));
+  --mask-active-fg: #fff;
+}
+
+/* 柔光在深色主题下光源反转：底色越黑，「暗影」越无从表现，改由「亮边」塑形。
+   同时给面板一个明确的凸起色——夜间 bg(#0a0a0a) 与 paper(#141414) 只差 10 级，
+   不额外提亮的话控件会整个融进背景。 */
+html[data-theme='night'][data-style='soft'] {
+  --paper: #1c1c1c;
+  --panel-2: #242424;
+  --line-2: rgba(255, 255, 255, 0.08);
+  --line-color: rgba(255, 255, 255, 0.07);
+  --soft-light: #2f2f2f;
+  --soft-dark: #050505;
 }
 
 /* 印刷主题下标签功能色灰阶化（最后覆盖，优先级最高） */
@@ -1986,6 +2162,1102 @@ html[data-style='brutal'] .bm-tagbtn:hover {
 }
 html[data-style='brutal'] .bm-tagbtn.active {
   border-color: var(--ink);
+}
+
+/* ----- ④ 杂志编排：栏目名、衬线刊头、发丝线、纯文字导航 ----- */
+
+/* 分组标签 = 栏目名：小字号大写 + 大字母间距 + 前置朱红竖标。
+   注意：底线留给「激活按钮」专用——两者都用下划线时，工具栏上会同时出现
+   「同步（标签）」与「同步（激活按钮）」两条红线，完全分不清哪个能点。 */
+html[data-style='editorial'] .tb-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding-bottom: 0;
+  border-bottom: none;
+  margin-right: 6px;
+}
+html[data-style='editorial'] .tb-label::before {
+  display: inline-block;
+  width: 1px;
+  height: 11px;
+  background: var(--red);
+  opacity: 1;
+}
+
+/* 刊头：衬线大字，字距收紧 */
+html[data-style='editorial'] .tb-title {
+  font-family: var(--font-title);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* 按钮 = 正文里的链接：平时只有文字与一条淡底线，悬停才浮出来 */
+html[data-style='editorial'] .btn {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+  border-radius: 0;
+  padding: 4px 8px;
+}
+html[data-style='editorial'] .btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+html[data-style='editorial'] .btn.active {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 2px solid var(--red);
+  color: var(--ink);
+  font-weight: 700;
+}
+html[data-style='editorial'] .btn:active:not(:disabled) {
+  transform: none;
+}
+/* 主操作是页面上唯一的「实心块」，因此被看见 */
+html[data-style='editorial'] .btn.primary {
+  background: var(--primary-bg);
+  border-color: var(--primary-bg);
+  border-radius: var(--r);
+  color: var(--primary-fg);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+html[data-style='editorial'] .btn.primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: var(--primary-hover-fg);
+}
+
+/* 栏头 = 页眉：加粗底线分隔，题本/解析做成朱红小字（而非色块） */
+html[data-style='editorial'] .viewer-header {
+  height: 44px;
+  border-bottom-width: 2px;
+  border-bottom-color: var(--ink);
+}
+html[data-style='editorial'] .vh-side {
+  background: transparent;
+  color: var(--red);
+  font-family: var(--font-title);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  padding: 0 2px;
+  border-radius: 0;
+}
+html[data-style='editorial'] .vh-name {
+  font-family: var(--font-title);
+  font-weight: 600;
+}
+html[data-style='editorial'] .vh-page {
+  font-family: var(--font-title);
+  font-weight: 600;
+}
+
+/* 页码永远安静：页角页码保留一层薄纸底（防止压在深色 PDF 内容上读不出） */
+html[data-style='editorial'] .page-no {
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  color: var(--dim);
+  border: 1px solid var(--line-2);
+  border-radius: 0;
+  font-family: var(--font-title);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+html[data-style='editorial'] .page-indicator {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: 0;
+  font-family: var(--font-title);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  box-shadow: 0 1px 3px rgba(20, 24, 30, 0.1);
+}
+
+/* 书签列表：由「卡片」改为「列表」——杂志的列表靠分隔线，不靠框 */
+html[data-style='editorial'] .bm-item {
+  border: none;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--line-2);
+  border-radius: 0;
+  margin-bottom: 0;
+  background: transparent;
+}
+html[data-style='editorial'] .bm-item:hover {
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+html[data-style='editorial'] .bm-main {
+  padding: 11px 12px;
+}
+
+/* 筛选 chip 与书签标签：纯文字切换 + 底线，激活时底线加粗着色 */
+html[data-style='editorial'] .chip {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 1px solid var(--line-2);
+  border-radius: 0;
+  padding: 3px 6px;
+  letter-spacing: 0.04em;
+}
+html[data-style='editorial'] .chip:hover {
+  background: transparent;
+  border-bottom-color: var(--ink);
+}
+html[data-style='editorial'] .chip-all.active {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 2px solid var(--ink);
+  color: var(--ink);
+}
+html[data-style='editorial'] .chip-wrong.active,
+html[data-style='editorial'] .chip-important.active,
+html[data-style='editorial'] .chip-doubt.active {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 2px solid currentColor;
+}
+html[data-style='editorial'] .chip-wrong.active {
+  color: var(--tag-wrong);
+}
+html[data-style='editorial'] .chip-important.active {
+  color: var(--tag-important);
+}
+html[data-style='editorial'] .chip-doubt.active {
+  color: var(--tag-doubt);
+}
+
+html[data-style='editorial'] .bm-tagbtn {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  border-radius: 0;
+}
+html[data-style='editorial'] .bm-tagbtn::before {
+  width: 2px;
+  height: 11px;
+}
+html[data-style='editorial'] .bm-tagbtn:hover {
+  border-color: transparent;
+  border-bottom-color: currentColor;
+}
+html[data-style='editorial'] .bm-tagbtn.active {
+  background: transparent;
+  border-color: transparent;
+  border-bottom: 2px solid currentColor;
+}
+/* 覆盖全局「实色填充 + 白字」，改回文字着色 */
+html[data-style='editorial'] .bm-tagbtn.btw-wrong.active {
+  background: transparent;
+  color: var(--tag-wrong);
+}
+html[data-style='editorial'] .bm-tagbtn.btw-important.active {
+  background: transparent;
+  color: var(--tag-important);
+}
+html[data-style='editorial'] .bm-tagbtn.btw-doubt.active {
+  background: transparent;
+  color: var(--tag-doubt);
+}
+
+/* 浮层：细线方框、直角、大而虚的投影 */
+html[data-style='editorial'] .sel-menu,
+html[data-style='editorial'] .cp-menu,
+html[data-style='editorial'] .more-menu {
+  border-color: var(--line-2);
+}
+html[data-style='editorial'] .sel-opt:hover {
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+html[data-style='editorial'] .sel-opt.active {
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 2px 0 0 var(--red);
+}
+
+html[data-style='editorial'] .modal {
+  border-color: var(--line-2);
+  padding: 28px;
+}
+html[data-style='editorial'] .modal h3 {
+  font-family: var(--font-title);
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+html[data-style='editorial'] .modal-input {
+  border-color: var(--line-2);
+  border-bottom-width: 2px;
+}
+html[data-style='editorial'] .modal-help h4 {
+  border-bottom: 1px solid var(--ink);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+}
+html[data-style='editorial'] .help-table td {
+  border-bottom-color: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+html[data-style='editorial'] .kbd {
+  background: transparent;
+  border-color: var(--line-2);
+  border-radius: 0;
+}
+
+/* 分隔条：一条发丝线 + 中间一个小方块（编辑标记） */
+html[data-style='editorial'] .divider {
+  background: var(--bg);
+  border-color: transparent;
+}
+html[data-style='editorial'] .divider::after {
+  width: 4px;
+  height: 4px;
+  border-radius: 0;
+  opacity: 0.45;
+}
+html[data-style='editorial'] .divider:hover,
+html[data-style='editorial'] .split-pane.dragging .divider {
+  background: color-mix(in srgb, var(--red) 8%, var(--bg));
+}
+
+html[data-style='editorial'] .toast {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  font-family: var(--font-title);
+  letter-spacing: 0.02em;
+}
+
+/* 空状态：细网格纸 + 刊头式引导语 */
+html[data-style='editorial'] .viewer-placeholder {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+/* 章节起首的朱红短线，杂志的「此处开篇」标记 */
+html[data-style='editorial'] .viewer-placeholder::before {
+  content: '';
+  flex-shrink: 0;
+  width: 44px;
+  height: 2px;
+  background: var(--red);
+}
+html[data-style='editorial'] .placeholder-title {
+  font-family: var(--font-title);
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  opacity: 1;
+}
+
+/* ----- ⑤ 玻璃态：半透明、背景模糊、高光边、柔和浮起 ----- */
+
+/* 主面板：半透明雾面 + 背景模糊。
+   注意——**不能给 .toolbar 加 backdrop-filter**：它内部有 position:fixed 的
+   下拉 / 取色器弹层（.sel-menu / .cp-menu，视口坐标），而 backdrop-filter 会让
+   工具栏成为这些 fixed 后代的包含块 → 弹层坐标错乱并被 overflow-y:hidden 裁掉。
+   况且工具栏背后是纯色 --bg，模糊本身看不出效果。 */
+html[data-style='glass'] .viewer-header,
+html[data-style='glass'] .bookmark-panel {
+  background: var(--glass-surface);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+html[data-style='glass'] .toolbar {
+  background: var(--glass-surface);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  box-shadow: 0 1px 0 var(--glass-edge);
+}
+html[data-style='glass'] .viewer-header {
+  box-shadow: 0 1px 0 var(--glass-edge);
+}
+html[data-style='glass'] .bookmark-panel {
+  border-left: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  box-shadow: -1px 0 0 var(--glass-edge);
+}
+
+/* 浮层：真正的玻璃——叠在 PDF 内容上时模糊生效 */
+html[data-style='glass'] .cp-menu,
+html[data-style='glass'] .sel-menu,
+html[data-style='glass'] .more-menu,
+html[data-style='glass'] .modal {
+  background: var(--glass-surface-strong);
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(var(--glass-saturate));
+  box-shadow:
+    var(--pop),
+    inset 0 1px 0 var(--glass-edge);
+}
+/* 吐司：全局是「深底 + 纸色字」，玻璃化后底变成浅色，
+   字色必须同步掰回墨色——否则就是白底白字（本项目的高危项） */
+html[data-style='glass'] .toast {
+  background: var(--glass-surface-strong);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(var(--glass-saturate));
+  box-shadow:
+    var(--pop),
+    inset 0 1px 0 var(--glass-edge);
+  color: var(--ink);
+}
+
+/* 按钮：玻璃小片——越悬停越实 */
+html[data-style='glass'] .btn {
+  background: color-mix(in srgb, var(--paper) 55%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 12%, transparent);
+  backdrop-filter: blur(8px);
+}
+html[data-style='glass'] .btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--paper) 84%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 22%, transparent);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(10, 14, 20, 0.12);
+}
+html[data-style='glass'] .btn.active {
+  background: color-mix(in srgb, var(--ink) 84%, transparent);
+  border-color: transparent;
+  color: var(--paper);
+  box-shadow: 0 2px 10px rgba(10, 14, 20, 0.18);
+}
+html[data-style='glass'] .btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+html[data-style='glass'] .btn.primary {
+  background: var(--primary-bg);
+  border-color: transparent;
+  color: var(--primary-fg);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--red) 38%, transparent);
+}
+html[data-style='glass'] .btn.primary:hover {
+  background: var(--primary-hover);
+  border-color: transparent;
+  color: var(--primary-hover-fg);
+}
+
+/* 分组标签：柔和胶囊，不再用竖标分割 */
+html[data-style='glass'] .tb-label {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--dim);
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.1em;
+}
+html[data-style='glass'] .tb-label::before {
+  display: none;
+}
+html[data-style='glass'] .tb-title {
+  letter-spacing: -0.01em;
+}
+
+/* 栏头题本/解析：柔和色胶囊 + 轻微外发光 */
+html[data-style='glass'] .vh-side {
+  border-radius: 999px;
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--red) 32%, transparent);
+}
+
+/* 页码：玻璃胶囊（半透明墨色 + 模糊，压在 PDF 上依然读得清） */
+html[data-style='glass'] .page-indicator,
+html[data-style='glass'] .page-no {
+  background: color-mix(in srgb, var(--ink) 64%, transparent);
+  backdrop-filter: blur(10px) saturate(1.4);
+  color: var(--paper);
+  border-radius: 999px;
+}
+
+/* 下拉项：圆角高亮底，不整块反色 */
+html[data-style='glass'] .sel-opt {
+  border-radius: 8px;
+}
+html[data-style='glass'] .sel-opt:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+html[data-style='glass'] .sel-opt.active {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+/* chip 与标签按钮：胶囊 + 半透明 */
+html[data-style='glass'] .chip,
+html[data-style='glass'] .bm-tagbtn {
+  border-radius: 999px;
+  border-color: color-mix(in srgb, var(--ink) 12%, transparent);
+  background: color-mix(in srgb, var(--paper) 52%, transparent);
+}
+html[data-style='glass'] .chip:hover,
+html[data-style='glass'] .bm-tagbtn:hover {
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+}
+/* 激活态必须是实色（功能色要一眼分辨）。
+   注意 .chip 的玻璃底写在 (0,2,1) 上，而 .chip-wrong.active 只有 (0,2,0)——
+   所以这里必须把 background 一并写回，否则激活的 chip 会变成「浅底 + 白字」。 */
+html[data-style='glass'] .chip-all.active {
+  background: color-mix(in srgb, var(--ink) 84%, transparent);
+  border-color: transparent;
+  color: var(--paper);
+}
+html[data-style='glass'] .chip-wrong.active,
+html[data-style='glass'] .chip-important.active,
+html[data-style='glass'] .chip-doubt.active {
+  border-color: transparent;
+  color: #fff;
+}
+html[data-style='glass'] .chip-wrong.active {
+  background: var(--tag-wrong);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tag-wrong) 40%, transparent);
+}
+html[data-style='glass'] .chip-important.active {
+  background: var(--tag-important);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tag-important) 40%, transparent);
+}
+html[data-style='glass'] .chip-doubt.active {
+  background: var(--tag-doubt);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tag-doubt) 40%, transparent);
+}
+html[data-style='glass'] .bm-tagbtn.btw-wrong.active {
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tag-wrong) 40%, transparent);
+}
+html[data-style='glass'] .bm-tagbtn.btw-important.active {
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tag-important) 40%, transparent);
+}
+html[data-style='glass'] .bm-tagbtn.btw-doubt.active {
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tag-doubt) 40%, transparent);
+}
+/* 遮罩激活与危险操作是功能语义色：玻璃化不能把它们也「玻璃化」掉 */
+html[data-style='glass'] .mask-accent .btn.active {
+  background: var(--mask-active-bg);
+  border-color: transparent;
+  color: var(--mask-active-fg);
+}
+html[data-style='glass'] .btn.danger:hover:not(:disabled) {
+  background: var(--red);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* 书签卡片：圆角浮片，标签色条改为内阴影（边框让位给投影） */
+html[data-style='glass'] .bm-item {
+  --bm-accent: transparent;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--paper) 68%, transparent);
+  box-shadow:
+    0 1px 2px rgba(10, 14, 20, 0.06),
+    0 6px 18px rgba(10, 14, 20, 0.08);
+}
+html[data-style='glass'] .bm-item.tag-wrong {
+  --bm-accent: var(--tag-wrong);
+}
+html[data-style='glass'] .bm-item.tag-important {
+  --bm-accent: var(--tag-important);
+}
+html[data-style='glass'] .bm-item.tag-doubt {
+  --bm-accent: var(--tag-doubt);
+}
+html[data-style='glass'] .bm-item {
+  border-left: 4px solid var(--bm-accent);
+}
+html[data-style='glass'] .bm-item:hover {
+  background: var(--paper);
+  box-shadow:
+    0 2px 4px rgba(10, 14, 20, 0.08),
+    0 10px 26px rgba(10, 14, 20, 0.12);
+}
+
+/* 文本标注框：一小片玻璃 */
+html[data-style='glass'] .text-box {
+  background: color-mix(in srgb, var(--paper) 64%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 14%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+/* 弹窗遮罩：隔着毛玻璃看内容 */
+html[data-style='glass'] .modal-mask {
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+  backdrop-filter: blur(10px) saturate(1.2);
+}
+
+/* 分隔条：一条透明玻璃缝，悬停时透出强调色 */
+html[data-style='glass'] .divider {
+  background: transparent;
+  border-color: transparent;
+}
+html[data-style='glass'] .divider::after {
+  width: 3px;
+  height: 40px;
+  border-radius: 999px;
+  opacity: 0.14;
+}
+html[data-style='glass'] .divider:hover,
+html[data-style='glass'] .split-pane.dragging .divider {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
+html[data-style='glass'] .divider:hover::after,
+html[data-style='glass'] .split-pane.dragging .divider::after {
+  background: var(--red);
+  opacity: 1;
+}
+
+/* 输入类控件 */
+html[data-style='glass'] .modal-input,
+html[data-style='glass'] .more-num,
+html[data-style='glass'] .vh-jump,
+html[data-style='glass'] .tb-select {
+  background: color-mix(in srgb, var(--paper) 60%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 12%, transparent);
+}
+html[data-style='glass'] .modal-input:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent);
+}
+
+/* 空状态：现代光晕 */
+html[data-style='glass'] .viewer-placeholder {
+  background-image:
+    radial-gradient(
+      ellipse 42% 32% at 50% 42%,
+      color-mix(in srgb, var(--red) 10%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 62% 42% at 20% 92%,
+      color-mix(in srgb, var(--tag-doubt) 9%, transparent),
+      transparent 70%
+    );
+}
+html[data-style='glass'] .placeholder-title {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* 滚动条：更细的圆头 */
+html[data-style='glass'] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+/* ----- ⑥ 柔光（新拟态）：无边框，凸凹全靠一明一暗两道光 ----- */
+
+/* 主面板：与背景同色系，靠一道柔影与内容区分 */
+html[data-style='soft'] .toolbar,
+html[data-style='soft'] .viewer-header,
+html[data-style='soft'] .bookmark-panel {
+  background: var(--paper);
+  border-color: var(--line-color);
+}
+html[data-style='soft'] .toolbar {
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--soft-dark) 55%, transparent);
+}
+html[data-style='soft'] .viewer-header {
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--soft-dark) 40%, transparent);
+}
+html[data-style='soft'] .bookmark-panel {
+  border-left-color: transparent;
+  box-shadow: -4px 0 10px color-mix(in srgb, var(--soft-dark) 40%, transparent);
+}
+
+/* 按钮：静止凸起，悬停更凸，按下凹陷。选中态不铺重底色，只用强调色文字 */
+html[data-style='soft'] .btn {
+  background: var(--paper);
+  border-color: transparent;
+  box-shadow: var(--soft-out-sm);
+  font-weight: 600;
+}
+html[data-style='soft'] .btn:hover:not(:disabled) {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--soft-out);
+}
+html[data-style='soft'] .btn:active:not(:disabled) {
+  transform: none;
+  box-shadow: var(--soft-in);
+}
+html[data-style='soft'] .btn:disabled {
+  box-shadow: none;
+}
+html[data-style='soft'] .btn.active {
+  background: var(--paper);
+  border-color: transparent;
+  color: var(--red);
+  box-shadow: var(--soft-in);
+}
+html[data-style='soft'] .btn.primary {
+  background: var(--primary-bg);
+  border-color: transparent;
+  color: var(--primary-fg);
+  box-shadow: var(--soft-out-sm);
+}
+html[data-style='soft'] .btn.primary:hover {
+  background: var(--primary-hover);
+  color: var(--primary-hover-fg);
+  box-shadow: var(--soft-out);
+}
+html[data-style='soft'] .btn.primary:active {
+  box-shadow: var(--soft-in);
+}
+/* 遮罩激活是功能语义，保留实色底 */
+html[data-style='soft'] .mask-accent .btn.active {
+  background: var(--mask-active-bg);
+  border-color: transparent;
+  color: var(--mask-active-fg);
+  box-shadow: var(--soft-in);
+}
+
+/* 分组标签：一个柔光小圆点，不带线 */
+html[data-style='soft'] .tb-label {
+  color: var(--dim);
+  letter-spacing: 0.1em;
+}
+html[data-style='soft'] .tb-label::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  opacity: 1;
+}
+
+/* 栏头与页码：柔光小方凸起 */
+html[data-style='soft'] .vh-side {
+  box-shadow: var(--soft-out-sm);
+}
+html[data-style='soft'] .vh-page:hover {
+  background: var(--paper);
+  border-color: transparent;
+  box-shadow: var(--soft-out-sm);
+}
+html[data-style='soft'] .page-indicator,
+html[data-style='soft'] .page-no {
+  background: var(--paper);
+  color: var(--ink);
+  border: none;
+  box-shadow: var(--soft-out-sm);
+}
+html[data-style='soft'] .page-no {
+  color: var(--dim);
+}
+
+/* 输入类控件：一律凹陷——柔光里「可输入」只能靠 inset 表达 */
+html[data-style='soft'] .tb-select,
+html[data-style='soft'] .vh-jump,
+html[data-style='soft'] .more-num,
+html[data-style='soft'] .modal-input,
+html[data-style='soft'] .tb-input,
+html[data-style='soft'] .cp-custom input[type='color'] {
+  background: var(--bg);
+  border-color: transparent;
+  box-shadow: var(--soft-in);
+}
+html[data-style='soft'] .tb-input {
+  background: var(--paper);
+  color: var(--red);
+}
+html[data-style='soft'] .modal-input:focus {
+  border-color: transparent;
+  box-shadow:
+    var(--soft-in),
+    0 0 0 2px var(--focus-ring);
+}
+
+/* 分隔条：一道凹槽 */
+html[data-style='soft'] .divider {
+  background: var(--bg);
+  border-color: transparent;
+  box-shadow:
+    inset 2px 0 4px color-mix(in srgb, var(--soft-dark) 70%, transparent),
+    inset -2px 0 4px color-mix(in srgb, var(--soft-light) 70%, transparent);
+}
+html[data-style='soft'] .divider::after {
+  width: 3px;
+  height: 30px;
+  opacity: 0.28;
+}
+html[data-style='soft'] .divider:hover,
+html[data-style='soft'] .split-pane.dragging .divider {
+  background: var(--bg);
+}
+html[data-style='soft'] .divider:hover::after,
+html[data-style='soft'] .split-pane.dragging .divider::after {
+  background: var(--red);
+  opacity: 1;
+}
+
+/* 书签卡片：无边框浮片；标签色条改用 inset 阴影（border 已让位） */
+html[data-style='soft'] .bm-item {
+  --bm-accent: transparent;
+  border: none;
+  border-radius: var(--r);
+  background: var(--paper);
+  box-shadow:
+    var(--soft-out-sm),
+    inset 3px 0 0 var(--bm-accent);
+}
+html[data-style='soft'] .bm-item.tag-wrong {
+  --bm-accent: var(--tag-wrong);
+}
+html[data-style='soft'] .bm-item.tag-important {
+  --bm-accent: var(--tag-important);
+}
+html[data-style='soft'] .bm-item.tag-doubt {
+  --bm-accent: var(--tag-doubt);
+}
+html[data-style='soft'] .bm-item:hover {
+  border: none;
+  background: var(--paper);
+  box-shadow:
+    var(--soft-out),
+    inset 3px 0 0 var(--bm-accent);
+}
+
+/* chip 与标签按钮：凸起 → 激活转凹陷 + 功能色文字 */
+html[data-style='soft'] .chip,
+html[data-style='soft'] .bm-tagbtn {
+  background: var(--paper);
+  border-color: transparent;
+  box-shadow: var(--soft-out-sm);
+}
+html[data-style='soft'] .chip:hover,
+html[data-style='soft'] .bm-tagbtn:hover {
+  background: var(--paper);
+  border-color: transparent;
+  box-shadow: var(--soft-out);
+}
+html[data-style='soft'] .chip-all.active {
+  background: var(--paper);
+  border-color: transparent;
+  color: var(--ink);
+  box-shadow: var(--soft-in);
+}
+html[data-style='soft'] .chip-wrong.active,
+html[data-style='soft'] .chip-important.active,
+html[data-style='soft'] .chip-doubt.active {
+  background: var(--paper);
+  border-color: transparent;
+  box-shadow: var(--soft-in);
+}
+html[data-style='soft'] .chip-wrong.active {
+  color: var(--tag-wrong);
+}
+html[data-style='soft'] .chip-important.active {
+  color: var(--tag-important);
+}
+html[data-style='soft'] .chip-doubt.active {
+  color: var(--tag-doubt);
+}
+html[data-style='soft'] .bm-tagbtn.btw-wrong.active,
+html[data-style='soft'] .bm-tagbtn.btw-important.active,
+html[data-style='soft'] .bm-tagbtn.btw-doubt.active {
+  background: var(--paper);
+  border-color: transparent;
+  box-shadow: var(--soft-in);
+}
+/* 同一个坑：全局激活态把字色设成了 #fff，换了浅底就必须把字色掰回功能色 */
+html[data-style='soft'] .bm-tagbtn.btw-wrong.active {
+  color: var(--tag-wrong);
+}
+html[data-style='soft'] .bm-tagbtn.btw-important.active {
+  color: var(--tag-important);
+}
+html[data-style='soft'] .bm-tagbtn.btw-doubt.active {
+  color: var(--tag-doubt);
+}
+/* 危险操作保留红色语义 */
+html[data-style='soft'] .btn.danger:hover:not(:disabled) {
+  background: var(--red);
+  color: #fff;
+  box-shadow: var(--soft-in);
+}
+
+/* 浮层：大圆角 + 双向柔光，不用描边 */
+html[data-style='soft'] .cp-menu,
+html[data-style='soft'] .sel-menu,
+html[data-style='soft'] .more-menu,
+html[data-style='soft'] .modal {
+  border-color: transparent;
+  box-shadow: var(--pop);
+}
+html[data-style='soft'] .sel-opt {
+  border-radius: 10px;
+}
+html[data-style='soft'] .sel-opt:hover {
+  background: var(--bg);
+}
+html[data-style='soft'] .sel-opt.active {
+  background: var(--paper);
+  color: var(--red);
+  box-shadow: var(--soft-in);
+}
+html[data-style='soft'] .modal-mask {
+  background: color-mix(in srgb, var(--ink) 26%, transparent);
+  backdrop-filter: blur(3px);
+}
+html[data-style='soft'] .toast {
+  background: var(--paper);
+  color: var(--ink);
+  border: none;
+  box-shadow: var(--pop);
+}
+
+/* 键帽：凸起小方块 */
+html[data-style='soft'] .kbd {
+  background: var(--paper);
+  border-color: transparent;
+  border-bottom-width: 0;
+  box-shadow: var(--soft-out-sm);
+}
+
+/* 帮助表格：柔光不靠线，把行线压到几乎不可见 */
+html[data-style='soft'] .help-table td {
+  border-bottom-color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+/* 文本标注框：凸起纸片 */
+html[data-style='soft'] .text-box {
+  border-color: transparent;
+  box-shadow: var(--soft-out-sm);
+}
+
+/* 空状态：一枚柔光圆盘 + 背后一团柔光。
+   柔光风里「看得见」的只有阴影，所以空状态必须给一个实体，否则整屏白得没有重心 */
+html[data-style='soft'] .viewer-placeholder {
+  background-image: radial-gradient(circle at 50% 44%, var(--soft-light), transparent 58%);
+}
+html[data-style='soft'] .viewer-placeholder::before {
+  content: '';
+  flex-shrink: 0;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: var(--soft-out);
+}
+html[data-style='soft'] .placeholder-title {
+  color: var(--dim);
+  font-weight: 600;
+  opacity: 1;
+}
+
+/* 滚动条：软胶囊 */
+html[data-style='soft'] ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+/* ==========================================================================
+   精致化打磨（现有三套：补齐此前没被风格覆盖到的细节）
+   原则：不改三套的视觉个性，只补空状态、焦点态、滚动条、⋮ 菜单与吐司。
+   ========================================================================== */
+
+/* ----- ① 瑞士国际：把「结构」贯彻到底 ----- */
+
+/* 空状态：网格纸 + 大写刊头（国际主义的网格系统） */
+html[data-style='swiss'] .viewer-placeholder {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--ink) 6%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+html[data-style='swiss'] .placeholder-title {
+  font-size: 16px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 1;
+  border-bottom: var(--line-w) solid var(--red);
+  padding-bottom: 6px;
+}
+
+/* 焦点态：方框——瑞士没有圆角，焦点也不该有 */
+html[data-style='swiss'] :focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+html[data-style='swiss'] .btn:focus-visible {
+  border-radius: 0;
+}
+
+/* 滚动条：方头、更窄 */
+html[data-style='swiss'] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+html[data-style='swiss'] ::-webkit-scrollbar-thumb {
+  border-radius: 0;
+  border-width: 2px;
+}
+
+/* ⋮ 菜单：每个分区由一条结构线切开，而不是靠留白 */
+html[data-style='swiss'] .more-menu {
+  gap: 0;
+}
+html[data-style='swiss'] .more-section + .more-section {
+  border-top: var(--bw) solid var(--line-2);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+/* 书签面板的分区线也跟上结构感 */
+html[data-style='swiss'] .bm-filters,
+html[data-style='swiss'] .bm-actions {
+  border-color: var(--line-2);
+}
+
+/* 吐司：方角、字距拉开（token 已给黑底白字与硬阴影） */
+html[data-style='swiss'] .toast {
+  border-radius: 0;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+
+/* ----- ② 中国水墨：纸感、淡墨、朱砂 ----- */
+
+/* ⋮ 菜单与各类浮层：与弹窗同一纸感，去掉生硬的黑边 */
+html[data-style='ink'] .more-menu,
+html[data-style='ink'] .sel-menu,
+html[data-style='ink'] .cp-menu {
+  border-color: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+/* 吐司：淡墨块 + 模糊，像题在纸边的批注 */
+html[data-style='ink'] .toast {
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.06em;
+}
+
+/* 书签卡片：墨线更淡，hover 时墨色才聚拢 */
+html[data-style='ink'] .bm-item {
+  border-color: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+html[data-style='ink'] .bm-item:hover {
+  border-color: color-mix(in srgb, var(--ink) 42%, transparent);
+}
+html[data-style='ink'] .bm-filters,
+html[data-style='ink'] .bm-actions {
+  border-color: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+/* 焦点态：朱砂细环，离得稍远，像印在纸上的圈 */
+html[data-style='ink'] :focus-visible {
+  outline: 1px solid var(--red);
+  outline-offset: 3px;
+}
+
+/* 滚动条：圆头细条 */
+html[data-style='ink'] ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+html[data-style='ink'] ::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border-width: 2px;
+}
+
+/* 空状态标题：楷书 + 朱砂细线，与下方山水呼应 */
+html[data-style='ink'] .placeholder-title {
+  font-family: var(--font-title);
+  letter-spacing: 0.3em;
+  opacity: 0.78;
+  border-bottom: 1px solid color-mix(in srgb, var(--red) 45%, transparent);
+  padding-bottom: 6px;
+}
+
+/* ----- ③ 新粗野：撞色、粗边、硬阴影 ----- */
+
+/* 空状态：斜条纹 + 一张歪着贴的黄色告示 */
+html[data-style='brutal'] .viewer-placeholder {
+  background-image:
+    linear-gradient(45deg, color-mix(in srgb, var(--ink) 6%, transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--ink) 6%, transparent) 25%, transparent 25%);
+  background-size: 28px 28px;
+}
+html[data-style='brutal'] .placeholder-title {
+  background: #ffde59;
+  color: #000;
+  border: var(--bw) solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 4px 12px;
+  transform: rotate(-1.5deg);
+}
+html[data-style='brutal'] .placeholder-text {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* 吐司：黄底黑字硬阴影，与页码浮标同一套语言 */
+html[data-style='brutal'] .toast {
+  background: #ffde59;
+  color: #000;
+  border: var(--bw) solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  font-weight: 700;
+}
+
+/* 书签面板分区线：粗黑线（这里是粗野该硬的地方） */
+html[data-style='brutal'] .bm-filters,
+html[data-style='brutal'] .bm-actions {
+  border-color: var(--ink);
+}
+
+/* 焦点态：硬偏移方框，与按钮的按压位移同一语言 */
+html[data-style='brutal'] :focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  box-shadow: 3px 3px 0 var(--red);
+}
+
+/* 滚动条：粗硬方头 */
+html[data-style='brutal'] ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+html[data-style='brutal'] ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 70%, transparent);
+  border-radius: 0;
+  border-width: 3px;
+}
+html[data-style='brutal'] ::-webkit-scrollbar-thumb:hover {
+  background: var(--red);
+}
+
+/* ----- 通用补：输入类控件的 focus 一致性 ----- */
+/* 原先只有 .tb-select 在聚焦时把边框加粗到 2px，会让控件尺寸跳动 1px。
+   改为「颜色 + 光环」，尺寸不变。这三条要压过各风格对 border-color 的覆盖，
+   因此选择器带了 html[data-style]。 */
+
+.tb-select:focus,
+.vh-jump:focus {
+  border-width: var(--bw);
+  border-color: var(--red);
+}
+html[data-style='glass'] .tb-select:focus,
+html[data-style='glass'] .vh-jump:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent);
+}
+html[data-style='soft'] .tb-select:focus,
+html[data-style='soft'] .vh-jump:focus {
+  border-color: transparent;
+  box-shadow:
+    var(--soft-in),
+    0 0 0 2px var(--focus-ring);
+}
+
+/* ----- 通用补：危险操作的红色语义 ----- */
+/* 各风格 .btn:hover 的特异性都高于全局的 .btn.danger:hover，
+   于是「删」这类按钮在悬停时不再变红。这里统一补回。 */
+html[data-style='ink'] .btn.danger:hover:not(:disabled),
+html[data-style='brutal'] .btn.danger:hover:not(:disabled),
+html[data-style='editorial'] .btn.danger:hover:not(:disabled) {
+  background: var(--red);
+  color: #fff;
+}
+html[data-style='brutal'] .btn.danger:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+html[data-style='editorial'] .btn.danger:hover:not(:disabled) {
+  border-color: var(--red);
 }
 
 /* ---------- 无障碍：尊重系统「减少动态效果」 ---------- */

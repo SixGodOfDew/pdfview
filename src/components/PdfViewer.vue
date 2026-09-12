@@ -37,7 +37,13 @@ watch(heights, () => {
   mapper.rebuild(heights.value)
   if (pendingPf != null) {
     const el = scrollEl.value
-    if (el) el.scrollTop = mapper.pageFloatToScrollTop(pendingPf)
+    if (el) {
+      const top = mapper.pageFloatToScrollTop(pendingPf)
+      el.scrollTop = top
+      // 必须同步 scrollTop ref：只写 DOM 的话，这一帧仍用「旧 scrollTop + 新 mapper」
+      // 计算可视页范围，可能渲染到远处页并闪一下（等原生 scroll 事件才自愈）
+      scrollTop.value = top
+    }
     pendingPf = null
   }
 })

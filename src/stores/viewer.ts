@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 import type { MasterSide } from '@/types'
 import type { SyncSide } from '@/core/sync/SyncEngine'
 import { PdfDocument, isPasswordError } from '@/core/pdf/PdfDocument'
+import { useSettingsStore } from '@/stores/settings'
 
 export interface ViewerSummary {
   path: string | null
@@ -147,6 +148,3 @@ export const useViewerStore = defineStore('viewer', () => {
 
   return { left, right, apis, summary, register, getDoc, getBaseSizes, setScale, requestScale, open, close }
 })
-
-// 延迟引入避免循环初始化问题
-import { useSettingsStore } from '@/stores/settings'

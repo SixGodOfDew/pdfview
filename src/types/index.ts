@@ -3,8 +3,18 @@ export type MaskMode = 'off' | 'click' | 'hover' | 'eraser'
 export type MasterSide = 'question' | 'answer'
 export type BookmarkTag = '错题' | '重点' | '存疑'
 
-/** 视觉风格：瑞士国际主义 / 中国水墨 / 新粗野主义 */
-export type StyleId = 'swiss' | 'ink' | 'brutal'
+/**
+ * 视觉风格：
+ * 结构派（靠线条/边框分割）
+ *   ① swiss     瑞士国际主义：直角 · 粗黑结构线 · 黑白反转 · 硬阴影
+ *   ② ink       中国水墨：大圆角 · 衬线宋体 · 细墨线 · 晕染阴影 · 朱砂点缀
+ *   ③ brutal    新粗野主义：粗黑边 · 高饱和撞色 · 硬阴影按压 · 纯色块
+ *   ④ editorial 杂志编排：衬线标题 · 无衬线正文 · 发丝细线 · 大留白 · 强调色小面积
+ * 材质派（靠光影/透明度塑形）
+ *   ⑤ glass     玻璃态：半透明面板 · 背景模糊 · 高光边 · 柔和多层投影
+ *   ⑥ soft      柔光：无边框 · 双向柔和阴影 · 同色系塑形
+ */
+export type StyleId = 'swiss' | 'ink' | 'brutal' | 'editorial' | 'glass' | 'soft'
 
 /** 当前激活工具：浏览（遮罩交互/滚动）/ 画笔 / 文字 */
 export type ToolId = 'browse' | 'pen' | 'text'
@@ -135,7 +145,15 @@ export interface SyncableSettings {
 }
 
 export const THEME_IDS: ThemeId[] = ['day', 'night', 'warm', 'print']
-export const STYLE_IDS: StyleId[] = ['swiss', 'ink', 'brutal']
+/** 顺序即工具栏下拉的展示顺序：先结构派，后材质派 */
+export const STYLE_IDS: StyleId[] = [
+  'swiss',
+  'ink',
+  'brutal',
+  'editorial',
+  'glass',
+  'soft'
+]
 export const SPLIT_PCT_MIN = 20
 export const SPLIT_PCT_MAX = 80
 export const SPLIT_PCT_DEFAULT = 50
@@ -148,7 +166,19 @@ export const PANE_LAYOUT_LABELS: Record<PaneLayout, string> = {
 export const STYLE_LABELS: Record<StyleId, string> = {
   swiss: '瑞士国际',
   ink: '中国水墨',
-  brutal: '新粗野'
+  brutal: '新粗野',
+  editorial: '杂志编排',
+  glass: '玻璃态',
+  soft: '柔光'
+}
+/** 风格一句话说明：用于 ⋮ 菜单/帮助里的风格说明，避免用户只能靠名字猜 */
+export const STYLE_HINTS: Record<StyleId, string> = {
+  swiss: '直角 · 粗黑结构线 · 黑白反转 · 硬阴影',
+  ink: '大圆角 · 衬线宋体 · 细墨线 · 晕染阴影 · 朱砂点缀',
+  brutal: '粗黑边 · 高饱和撞色 · 硬阴影按压 · 纯色块',
+  editorial: '衬线标题 · 发丝细线 · 大留白 · 强调色小面积',
+  glass: '半透明面板 · 背景模糊 · 高光边 · 柔和投影',
+  soft: '无边框 · 双向柔和阴影 · 同色系塑形'
 }
 export const SYNC_MODES: SyncMode[] = ['ratio', 'pageScale', 'anchor']
 export const SYNC_MODE_LABELS: Record<SyncMode, string> = {

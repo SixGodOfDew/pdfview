@@ -13,12 +13,17 @@ export interface PageCssSize {
   cssHeight: number
 }
 
+/** pdf.js 的加载任务（用 ReturnType 取得，免去依赖内部导出名） */
+type PdfLoadingTask = ReturnType<typeof getDocument>
+
 /** PDF.js 封装：加载 / 尺寸 / 渲染 */
 export class PdfDocument {
   readonly pdf: PDFDocumentProxy
+  private readonly loadingTask: PdfLoadingTask
 
-  private constructor(pdf: PDFDocumentProxy) {
+  private constructor(pdf: PDFDocumentProxy, loadingTask: PdfLoadingTask) {
     this.pdf = pdf
+    this.loadingTask = loadingTask
   }
 
   static async load(data: Uint8Array, password?: string): Promise<PdfDocument> {
@@ -26,7 +31,7 @@ export class PdfDocument {
     const copy = new Uint8Array(data)
     const task = getDocument({ data: copy, password })
     const pdf = await task.promise
-    return new PdfDocument(pdf)
+    return new PdfDocument(pdf, task)
   }
 
   get numPages(): number {
@@ -64,7 +69,19 @@ export class PdfDocument {
     return { cssWidth: w / dpr, cssHeight: h / dpr }
   }
 
+  /**
+   * 彻底释放文档。
+   *
+   * 注意：`PDFDocumentProxy` **只有 `cleanup()`**（清缓存），没有 `destroy()`；
+   * 真正终止 worker 的是 `loadingTask.destroy()`（类型注释原文：
+   * "Abort all network requests and destroy the worker"）。
+   * 只调 cleanup 会每打开一个文件就漏一个 worker，反复换文件时内存持续上涨。
+   *
+   * 渲染中的页面会因 worker 终止而 reject —— PdfPage.render 已忽略该错误。
+   */
   destroy(): void {
-    void this.pdf.cleanup()
+    void this.loadingTask.destroy().catch(() => {
+      /* 已在销毁中或加载失败：忽略 */
+    })
   }
 }

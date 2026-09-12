@@ -21,6 +21,8 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: string | number): void }>
 const show = ref(false)
 const btnEl = ref<HTMLElement | null>(null)
 const rootEl = ref<HTMLElement | null>(null)
+/** Teleport 到 body 的弹层（不是 rootEl 的后代，需单独参与「点击外部」判断） */
+const menuEl = ref<HTMLElement | null>(null)
 const pos = ref({ top: 0, left: 0 })
 
 const currentLabel = computed(() => {
@@ -44,9 +46,11 @@ function pick(o: SelectOption): void {
 }
 
 function onDocDown(e: MouseEvent): void {
-  if (show.value && rootEl.value && !rootEl.value.contains(e.target as Node)) {
-    show.value = false
-  }
+  if (!show.value) return
+  const t = e.target as Node
+  // 弹层挂在 body 下，已不是 rootEl 的后代；漏判会把「点选项」当点击外部而先关掉
+  if (rootEl.value?.contains(t) || menuEl.value?.contains(t)) return
+  show.value = false
 }
 
 function onResize(): void {
@@ -69,20 +73,29 @@ onBeforeUnmount(() => {
       <span class="sel-label">{{ currentLabel }}</span>
       <span class="sel-caret" :class="{ open: show }">▾</span>
     </button>
-    <div
-      v-if="show"
-      class="sel-menu"
-      :style="{ top: pos.top + 'px', left: pos.left + 'px', minWidth: minWidth + 'px' }"
-    >
-      <button
-        v-for="o in options"
-        :key="String(o.value)"
-        class="sel-opt"
-        :class="{ active: o.value === modelValue }"
-        @click="pick(o)"
+    <!--
+      弹层 Teleport 到 body：
+      它是 position:fixed + 视口坐标，任何祖先只要有 transform / filter /
+      backdrop-filter（如玻璃态工具栏与 ⋮ 菜单）都会成为它的包含块，
+      坐标随之错乱并被祖先的 overflow 裁掉。挂到 body 后与祖先完全解耦。
+    -->
+    <Teleport to="body">
+      <div
+        v-if="show"
+        ref="menuEl"
+        class="sel-menu"
+        :style="{ top: pos.top + 'px', left: pos.left + 'px', minWidth: minWidth + 'px' }"
       >
-        {{ o.label }}
-      </button>
-    </div>
+        <button
+          v-for="o in options"
+          :key="String(o.value)"
+          class="sel-opt"
+          :class="{ active: o.value === modelValue }"
+          @click="pick(o)"
+        >
+          {{ o.label }}
+        </button>
+      </div>
+    </Teleport>
   </div>
 </template>

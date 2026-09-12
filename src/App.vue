@@ -47,16 +47,26 @@ syncEngine.applyToSlave = (pf: number) => {
 }
 syncEngine.getSide = (side: MasterSide) => viewer.apis[side]?.syncSide() ?? null
 
-// 切换同步方式 / 重新开启同步后，立即按新口径把从侧拉齐
-// （flush: 'post' 保证上面的 watchEffect 已把新设置推给引擎）
+/** 立即按当前设置把从侧拉齐（幂等） */
+function resyncNow(): void {
+  if (!settings.syncEnabled) return
+  const master = settings.master
+  if (!viewer.summary(master).loaded) return
+  syncEngine.onMasterScroll(viewer.summary(master).pageFloat)
+}
+
+// 切换同步方式 / 重新开启同步 / 改动倍率偏移后，立即把从侧拉齐
+// （flush: 'post' 保证上面的 watchEffect 已把新设置推给引擎。
+//   倍率与偏移必须一并监听：只监听 mode 的话，改完输入框画面纹丝不动，
+//   用户得先滚一下才生效，像是坏了。）
 watch(
-  [() => settings.syncMode, () => settings.syncEnabled],
-  () => {
-    if (!settings.syncEnabled) return
-    const master = settings.master
-    if (!viewer.summary(master).loaded) return
-    syncEngine.onMasterScroll(viewer.summary(master).pageFloat)
-  },
+  [
+    () => settings.syncMode,
+    () => settings.syncEnabled,
+    () => settings.syncRatio,
+    () => settings.syncOffset
+  ],
+  () => resyncNow(),
   { flush: 'post' }
 )
 
@@ -211,7 +221,8 @@ function alignSides(): void {
   }
   const q = viewer.left.pageFloat
   const a = viewer.right.pageFloat
-  if (!syncEngine.addAnchor(q, a)) {
+  const outcome = syncEngine.addAnchor(q, a)
+  if (outcome.status === 'rejected') {
     notice.value = {
       title: '锚点顺序冲突',
       message:
@@ -222,9 +233,12 @@ function alignSides(): void {
   const switched = settings.syncMode !== 'anchor'
   if (switched) settings.setSyncMode('anchor')
   settings.bumpSyncVersion()
+  // 同一位置（0.5 页内）是覆盖而非新增——如实告知，否则用户以为记上了新锚点
   showToast(
     `已对齐 题本 P${Math.floor(q) + 1} ↔ 解析 P${Math.floor(a) + 1}` +
-      `（第 ${syncEngine.anchors.length} 个锚点）` +
+      (outcome.status === 'replaced'
+        ? `（同位置，已更新第 ${outcome.index + 1} 个锚点）`
+        : `（第 ${outcome.index + 1} 个锚点）`) +
       (switched ? ' · 已切到锚点同步' : '')
   )
 }
@@ -239,6 +253,8 @@ function lockPageScale(): void {
   settings.setPageScale(est.ratio, est.offset)
   settings.setSyncMode('pageScale')
   showToast(`已按锚点估算倍率 ${est.ratio.toFixed(3)}、偏移 ${est.offset.toFixed(2)} 并持久化`)
+  // 已是 pageScale 模式时 setSyncMode 值未变、上面的 watch 不会触发，这里显式拉齐一次
+  resyncNow()
 }
 
 function clearAnchors(): void {

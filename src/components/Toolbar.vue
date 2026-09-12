@@ -15,6 +15,7 @@ import {
   PANE_LAYOUT_LABELS,
   STYLE_IDS,
   STYLE_LABELS,
+  STYLE_HINTS,
   SYNC_MODES,
   SYNC_MODE_HINTS,
   SYNC_MODE_LABELS,
@@ -414,8 +415,8 @@ onBeforeUnmount(() => {
             <SelectMenu
               :model-value="settings.style"
               :options="STYLE_IDS.map((s) => ({ value: s, label: STYLE_LABELS[s] }))"
-              title="界面风格"
-              :min-width="130"
+              :title="'界面风格 · ' + STYLE_HINTS[settings.style]"
+              :min-width="150"
               @update:model-value="onStyleChange"
             />
           </div>

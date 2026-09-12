@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
-import { join, dirname } from 'path'
+import { join, dirname, resolve, sep } from 'path'
 import { readFile, writeFile, mkdir, rename, stat } from 'fs/promises'
 import { existsSync } from 'fs'
 
@@ -63,6 +63,24 @@ async function getDataDir(): Promise<string> {
   if (process.env['PDFVIEW_SMOKE_DATA_DIR']) return process.env['PDFVIEW_SMOKE_DATA_DIR']
   const cfg = await loadConfig()
   return cfg.dataDir || defaultDataDir()
+}
+
+/**
+ * 数据文件名 → 绝对路径。
+ * 只接受纯文件名（不含路径分隔符、非 . / ..），并校验结果仍在数据目录内——
+ * 渲染进程一旦被注入，不能靠 `../` 越出数据目录读写任意文件（纵深防御）。
+ */
+async function resolveDataPath(name: unknown): Promise<string> {
+  if (typeof name !== 'string' || name === '' || name === '.' || name === '..') {
+    throw new Error('无效的数据文件名')
+  }
+  if (name.includes('/') || name.includes('\\') || name.includes('\0')) {
+    throw new Error('数据文件名不能包含路径: ' + name)
+  }
+  const dir = resolve(await getDataDir())
+  const p = resolve(dir, name)
+  if (!p.startsWith(dir + sep)) throw new Error('数据文件名越出数据目录: ' + name)
+  return p
 }
 
 /**
@@ -151,15 +169,14 @@ function registerIpc(): void {
     return dir
   })
 
-  // 业务数据 JSON 读写（原子写）
+  // 业务数据 JSON 读写（原子写；文件名经校验，不能越出数据目录）
   ipcMain.handle('data:read', async (_e, name: string) => {
-    const p = join(await getDataDir(), name)
+    const p = await resolveDataPath(name)
     if (!existsSync(p)) return null
     return readFile(p, 'utf-8')
   })
   ipcMain.handle('data:write', async (_e, name: string, content: string) => {
-    const dir = await getDataDir()
-    await atomicWrite(join(dir, name), content)
+    await atomicWrite(await resolveDataPath(name), content)
   })
 }
 

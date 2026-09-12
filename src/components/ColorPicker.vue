@@ -30,6 +30,8 @@ const PRESET_COLORS = [
 const show = ref(false)
 const btnEl = ref<HTMLElement | null>(null)
 const rootEl = ref<HTMLElement | null>(null)
+/** Teleport 到 body 的弹层（不是 rootEl 的后代，需单独参与「点击外部」判断） */
+const menuEl = ref<HTMLElement | null>(null)
 const pos = ref({ top: 0, left: 0 })
 
 function toggle(): void {
@@ -47,9 +49,11 @@ function pick(c: string): void {
 }
 
 function onDocDown(e: MouseEvent): void {
-  if (show.value && rootEl.value && !rootEl.value.contains(e.target as Node)) {
-    show.value = false
-  }
+  if (!show.value) return
+  const t = e.target as Node
+  // 弹层挂在 body 下，已不是 rootEl 的后代；漏判会把「点色块」当点击外部而先关掉
+  if (rootEl.value?.contains(t) || menuEl.value?.contains(t)) return
+  show.value = false
 }
 
 function onResize(): void {
@@ -72,31 +76,30 @@ onBeforeUnmount(() => {
       <span class="cp-swatch" :style="{ background: modelValue }" />
       <span class="cp-caret" :class="{ open: show }">▾</span>
     </button>
-    <div
-      v-if="show"
-      class="cp-menu"
-      :style="{ top: pos.top + 'px', left: pos.left + 'px' }"
-    >
-      <div class="cp-grid">
-        <button
-          v-for="c in PRESET_COLORS"
-          :key="c"
-          class="cp-swatch-btn"
-          :class="{ active: c.toLowerCase() === modelValue.toLowerCase() }"
-          :style="{ background: c }"
-          :title="c"
-          @click="pick(c)"
-        />
+    <!-- 弹层 Teleport 到 body：见 SelectMenu 的说明（隔离祖先的 transform/filter/overflow） -->
+    <Teleport to="body">
+      <div v-if="show" ref="menuEl" class="cp-menu" :style="{ top: pos.top + 'px', left: pos.left + 'px' }">
+        <div class="cp-grid">
+          <button
+            v-for="c in PRESET_COLORS"
+            :key="c"
+            class="cp-swatch-btn"
+            :class="{ active: c.toLowerCase() === modelValue.toLowerCase() }"
+            :style="{ background: c }"
+            :title="c"
+            @click="pick(c)"
+          />
+        </div>
+        <label class="cp-custom">
+          <span>自定义</span>
+          <input
+            type="color"
+            :value="modelValue"
+            title="打开系统取色器"
+            @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+          />
+        </label>
       </div>
-      <label class="cp-custom">
-        <span>自定义</span>
-        <input
-          type="color"
-          :value="modelValue"
-          title="打开系统取色器"
-          @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-        />
-      </label>
-    </div>
+    </Teleport>
   </div>
 </template>
