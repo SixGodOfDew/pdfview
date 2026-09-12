@@ -98,6 +98,22 @@ export interface Bookmark {
   updatedAt: number
 }
 
+/**
+ * 同步方式：
+ * - ratio    比例同步（默认）：按「滚动高度百分比」映射，天然兼容解析比题本长
+ * - pageScale 倍率 + 起始偏移：目标页浮点 = 源页浮点 × ratio + offset
+ * - anchor   锚点校准：把若干「题本页 ↔ 解析页」对应点连成分段线性映射
+ */
+export type SyncMode = 'ratio' | 'pageScale' | 'anchor'
+
+/** 锚点：一次「一键对齐」记录下的双侧页浮点对应关系 */
+export interface SyncAnchor {
+  /** 源侧（题本）页浮点 */
+  qPage: number
+  /** 目标侧（解析）页浮点 */
+  aPage: number
+}
+
 /** 可同步的应用设置（存数据目录 settings.json） */
 export interface SyncableSettings {
   theme: ThemeId
@@ -106,6 +122,12 @@ export interface SyncableSettings {
   syncEnabled: boolean
   master: MasterSide
   hoverShape: HoverShape
+  /** 同步方式 */
+  syncMode?: SyncMode
+  /** pageScale 模式倍率 */
+  syncRatio?: number
+  /** pageScale 模式起始偏移（页浮点） */
+  syncOffset?: number
   /** 分栏比例（左侧宽度百分比，20~80），拖动后记忆 */
   splitPct?: number
   /** 快捷键绑定（动作 → 键位字符串），可自定义 */
@@ -127,6 +149,17 @@ export const STYLE_LABELS: Record<StyleId, string> = {
   swiss: '瑞士国际',
   ink: '中国水墨',
   brutal: '新粗野'
+}
+export const SYNC_MODES: SyncMode[] = ['ratio', 'pageScale', 'anchor']
+export const SYNC_MODE_LABELS: Record<SyncMode, string> = {
+  ratio: '比例同步',
+  pageScale: '倍率 + 偏移',
+  anchor: '锚点校准'
+}
+export const SYNC_MODE_HINTS: Record<SyncMode, string> = {
+  ratio: '按滚动高度百分比映射：解析侧自动按自身总高换算，页数不同也不会累积错位',
+  pageScale: '按「目标页 = 源页 × 倍率 + 偏移」映射：适合两侧有固定页码倍数关系的资料',
+  anchor: '滚到对应位置后按「对齐」（Ctrl+Alt+A）记录锚点；锚点越多越准，适合题本与解析页码无规律对应'
 }
 export const MASK_MODES: MaskMode[] = ['off', 'click', 'hover', 'eraser']
 export const BOOKMARK_TAGS: BookmarkTag[] = ['错题', '重点', '存疑']

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useViewerStore } from '@/stores/viewer'
 import { useMaskStore } from '@/stores/mask'
 import { useAnnotationStore } from '@/stores/annotation'
 import { useBossModeStore } from '@/stores/bossMode'
+import { syncEngine } from '@/core/sync/SyncEngine'
 import SelectMenu from '@/components/SelectMenu.vue'
 import ColorPicker from '@/components/ColorPicker.vue'
 import {
@@ -14,15 +15,29 @@ import {
   PANE_LAYOUT_LABELS,
   STYLE_IDS,
   STYLE_LABELS,
+  SYNC_MODES,
+  SYNC_MODE_HINTS,
+  SYNC_MODE_LABELS,
   THEME_IDS
 } from '@/types'
-import type { HoverShape, MaskMode, MasterSide, StyleId, ThemeId, ToolId } from '@/types'
+import type {
+  HoverShape,
+  MaskMode,
+  MasterSide,
+  StyleId,
+  SyncMode,
+  ThemeId,
+  ToolId
+} from '@/types'
 
 const emit = defineEmits<{
   (e: 'open', side: MasterSide): void
   (e: 'toggle-bookmarks'): void
   (e: 'add-bookmark'): void
   (e: 'toggle-help'): void
+  (e: 'align-sync'): void
+  (e: 'lock-page-scale'): void
+  (e: 'clear-anchors'): void
 }>()
 
 const settings = useSettingsStore()
@@ -87,6 +102,29 @@ function onThemeChange(v: string | number): void {
   settings.setTheme(v as ThemeId)
 }
 
+// —— 同步方式 ——
+/** 锚点存在非响应式的 SyncEngine 里，靠 settings.syncVersion 驱动重算 */
+const anchorCount = computed(() => {
+  void settings.syncVersion
+  return syncEngine.anchors.length
+})
+
+const syncModeOptions = SYNC_MODES.map((m) => ({ value: m, label: SYNC_MODE_LABELS[m] }))
+
+function onSyncModeChange(v: string | number): void {
+  settings.setSyncMode(v as SyncMode)
+}
+
+function onRatioChange(e: Event): void {
+  const v = Number((e.target as HTMLInputElement).value)
+  settings.setPageScale(Number.isFinite(v) ? v : settings.syncRatio, settings.syncOffset)
+}
+
+function onOffsetChange(e: Event): void {
+  const v = Number((e.target as HTMLInputElement).value)
+  settings.setPageScale(settings.syncRatio, Number.isFinite(v) ? v : settings.syncOffset)
+}
+
 // —— 「⋮」更多菜单（fixed 定位，避免被工具栏横向滚动裁剪） ——
 const showMore = ref(false)
 const moreBtn = ref<HTMLElement | null>(null)
@@ -142,7 +180,13 @@ onBeforeUnmount(() => {
       <button
         class="btn"
         :class="{ active: settings.syncEnabled }"
-        :title="'比例同步（' + (settings.syncEnabled ? '开' : '关') + '）'"
+        :title="
+          '同步（' +
+          (settings.syncEnabled ? '开' : '关') +
+          '）· 方式：' +
+          SYNC_MODE_LABELS[settings.syncMode] +
+          '（在「⋮ 更多」里切换）'
+        "
         @click="settings.toggleSync()"
       >
         同步
@@ -293,6 +337,78 @@ onBeforeUnmount(() => {
           class="more-menu"
           :style="{ top: morePos.top + 'px', right: morePos.right + 'px' }"
         >
+          <div class="more-section">
+            <div class="more-title">同步方式</div>
+            <SelectMenu
+              :model-value="settings.syncMode"
+              :options="syncModeOptions"
+              :title="SYNC_MODE_HINTS[settings.syncMode]"
+              :min-width="150"
+              @update:model-value="onSyncModeChange"
+            />
+            <p class="more-hint">{{ SYNC_MODE_HINTS[settings.syncMode] }}</p>
+
+            <div class="more-row">
+              <button
+                class="btn"
+                title="把当前两侧位置记为一个锚点（默认 Ctrl+Alt+A）"
+                @click="emit('align-sync')"
+              >
+                对齐当前
+              </button>
+              <span class="more-meta">{{ anchorCount }} 锚点</span>
+              <button
+                class="btn"
+                :disabled="anchorCount === 0"
+                title="清除本会话记录的全部锚点"
+                @click="emit('clear-anchors')"
+              >
+                清除
+              </button>
+            </div>
+
+            <template v-if="settings.syncMode === 'pageScale'">
+              <div class="more-row">
+                <label class="more-field">
+                  倍率
+                  <input
+                    class="more-num"
+                    type="number"
+                    step="0.01"
+                    min="0.1"
+                    max="10"
+                    :value="settings.syncRatio"
+                    @change="onRatioChange"
+                  />
+                </label>
+                <label class="more-field">
+                  偏移
+                  <input
+                    class="more-num"
+                    type="number"
+                    step="0.5"
+                    :value="settings.syncOffset"
+                    @change="onOffsetChange"
+                  />
+                </label>
+              </div>
+              <div class="more-row">
+                <button
+                  class="btn"
+                  :disabled="anchorCount < 2"
+                  :title="
+                    anchorCount < 2
+                      ? '至少需要 2 个锚点（先用「对齐当前」记两处）'
+                      : '用首尾锚点估算倍率与偏移，并写入 settings.json 持久生效'
+                  "
+                  @click="emit('lock-page-scale')"
+                >
+                  按锚点估算
+                </button>
+              </div>
+            </template>
+          </div>
+
           <div class="more-section">
             <div class="more-title">风格</div>
             <SelectMenu

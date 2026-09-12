@@ -14,6 +14,7 @@ export type ShortcutAction =
   | 'addBookmark'
   | 'toggleBookmarks'
   | 'syncToggle'
+  | 'syncAlign'
   | 'pageNext'
   | 'pagePrev'
   | 'fitWidth'
@@ -33,6 +34,7 @@ export const SHORTCUT_DEFAULTS: Record<ShortcutAction, string> = {
   addBookmark: 'd',
   toggleBookmarks: 'k',
   syncToggle: 's',
+  syncAlign: 'ctrl+alt+a',
   pageNext: 'pagedown',
   pagePrev: 'pageup',
   fitWidth: 'ctrl+0',
@@ -53,6 +55,7 @@ export const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
   addBookmark: '添加书签',
   toggleBookmarks: '书签面板',
   syncToggle: '开关同步',
+  syncAlign: '一键对齐（记一个锚点）',
   pageNext: '主侧下一页',
   pagePrev: '主侧上一页',
   fitWidth: '适应宽度',

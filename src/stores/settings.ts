@@ -5,6 +5,7 @@ import type {
   MasterSide,
   PaneLayout,
   StyleId,
+  SyncMode,
   SyncableSettings,
   ThemeId
 } from '@/types'
@@ -23,7 +24,10 @@ const DEFAULTS: SyncableSettings = {
   syncEnabled: true,
   master: 'question',
   hoverShape: 'circle',
-  splitPct: SPLIT_PCT_DEFAULT
+  splitPct: SPLIT_PCT_DEFAULT,
+  syncMode: 'ratio',
+  syncRatio: 1,
+  syncOffset: 0
 }
 
 /** 可同步设置：存数据目录 settings.json（随同步中心跨机同步） */
@@ -40,6 +44,17 @@ export const useSettingsStore = defineStore('settings', () => {
   const paneLayout = ref<PaneLayout>('both')
   /** 快捷键绑定（可自定义，可跨机同步） */
   const shortcuts = ref<Record<ShortcutAction, string>>({ ...SHORTCUT_DEFAULTS })
+  /** 同步方式：比例（滚动高度百分比）/ 倍率+偏移 / 锚点校准 */
+  const syncMode = ref<SyncMode>(DEFAULTS.syncMode ?? 'ratio')
+  /** pageScale 模式倍率 */
+  const syncRatio = ref(DEFAULTS.syncRatio ?? 1)
+  /** pageScale 模式起始偏移（页浮点） */
+  const syncOffset = ref(DEFAULTS.syncOffset ?? 0)
+  /**
+   * 同步状态变更信号：锚点存在 SyncEngine 里（非响应式，且当前为会话级），
+   * 变化时自增以驱动 UI 重绘——沿用项目「核心类不响应式 + store version 驱动」的约定。
+   */
+  const syncVersion = ref(0)
   const loaded = ref(false)
 
   async function load(): Promise<void> {
@@ -51,6 +66,9 @@ export const useSettingsStore = defineStore('settings', () => {
     master.value = data?.master ?? DEFAULTS.master
     hoverShape.value = data?.hoverShape ?? DEFAULTS.hoverShape
     splitPct.value = clampSplitPct(data?.splitPct ?? SPLIT_PCT_DEFAULT)
+    syncMode.value = data?.syncMode ?? DEFAULTS.syncMode ?? 'ratio'
+    syncRatio.value = clampRatio(data?.syncRatio)
+    syncOffset.value = clampOffset(data?.syncOffset)
     // 逐键合并：新增动作/缺失键位回退默认
     shortcuts.value = { ...SHORTCUT_DEFAULTS, ...(data?.shortcuts ?? {}) }
     loaded.value = true
@@ -65,9 +83,24 @@ export const useSettingsStore = defineStore('settings', () => {
       master: master.value,
       hoverShape: hoverShape.value,
       splitPct: splitPct.value,
+      syncMode: syncMode.value,
+      syncRatio: syncRatio.value,
+      syncOffset: syncOffset.value,
       shortcuts: shortcuts.value
     }
     await writeJson('settings.json', data)
+  }
+
+  /** 倍率限定在 0.1~10（超出必是误输入；页数比再极端也不会超这个量级） */
+  function clampRatio(r: number | undefined): number {
+    if (r == null || !Number.isFinite(r)) return 1
+    return Math.min(10, Math.max(0.1, r))
+  }
+
+  /** 偏移限定在 ±1000 页（超大偏移一定是误对齐） */
+  function clampOffset(o: number | undefined): number {
+    if (o == null || !Number.isFinite(o)) return 0
+    return Math.min(1000, Math.max(-1000, o))
   }
 
   function clampSplitPct(p: number): number {
@@ -126,6 +159,23 @@ export const useSettingsStore = defineStore('settings', () => {
     void persist()
   }
 
+  function setSyncMode(m: SyncMode): void {
+    syncMode.value = m
+    void persist()
+  }
+
+  /** 设置倍率同步参数（同时写入 settings.json，持久生效） */
+  function setPageScale(ratio: number, offset: number): void {
+    syncRatio.value = clampRatio(ratio)
+    syncOffset.value = clampOffset(offset)
+    void persist()
+  }
+
+  /** 锚点等非持久化同步状态变化后调用，触发依赖它的 UI 重算 */
+  function bumpSyncVersion(): void {
+    syncVersion.value++
+  }
+
   /**
    * 重绑定快捷键：若新键位已被其他动作占用，则两者交换（常见桌面应用行为）。
    * @returns 被交换的动作名（无冲突时返回 null）；非法绑定返回 undefined 表示未生效
@@ -162,6 +212,10 @@ export const useSettingsStore = defineStore('settings', () => {
     splitPct,
     paneLayout,
     shortcuts,
+    syncMode,
+    syncRatio,
+    syncOffset,
+    syncVersion,
     loaded,
     load,
     setSplitPct,
@@ -174,6 +228,9 @@ export const useSettingsStore = defineStore('settings', () => {
     toggleSync,
     setMaster,
     setHoverShape,
+    setSyncMode,
+    setPageScale,
+    bumpSyncVersion,
     setShortcut,
     resetShortcuts
   }

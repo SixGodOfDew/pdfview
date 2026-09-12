@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PageMapper } from '@/core/sync/PageMapper'
 import { syncEngine } from '@/core/sync/SyncEngine'
+import type { SyncSide } from '@/core/sync/SyncEngine'
 import { useViewerStore } from '@/stores/viewer'
 import { useSettingsStore } from '@/stores/settings'
 import { useProgressStore } from '@/stores/progress'
@@ -112,6 +113,11 @@ function applyScale(newScale: number): void {
   viewerStore.setScale(props.side, newScale)
 }
 
+/** 同步几何：把本侧 mapper 与视口高交给 SyncEngine（比例同步按高度百分比换算） */
+function syncSide(): SyncSide {
+  return { mapper, viewportHeight: viewportH.value }
+}
+
 /** 跳转到指定页（0-based）；在主侧时联动从侧，并记入阅读进度 */
 function gotoPage(pageIndex: number): void {
   const el = scrollEl.value
@@ -185,7 +191,7 @@ watch(scrollEl, (el) => {
 })
 
 onMounted(() => {
-  viewerStore.register(props.side, { applyPageFloat, applyScale, gotoPage, fitWidth })
+  viewerStore.register(props.side, { applyPageFloat, applyScale, gotoPage, fitWidth, syncSide })
 })
 onBeforeUnmount(() => {
   viewerStore.register(props.side, null)

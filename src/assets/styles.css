@@ -737,6 +737,53 @@ html[data-style='brutal'] .sel-trigger {
   gap: 6px;
 }
 
+/* ⋮ 菜单内的「同步方式」区 */
+.more-hint {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+.more-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.more-meta {
+  font-size: 10px;
+  color: var(--dim);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.more-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.more-num {
+  width: 62px;
+  min-height: calc(var(--ctl-h) - 4px);
+  padding: 0 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  border: var(--bw) solid var(--line-color);
+  border-radius: var(--r);
+  outline: none;
+}
+.more-num:focus-visible {
+  border-color: var(--focus-ring);
+}
+
 /* ---------- 双栏 ---------- */
 
 .split-pane {
@@ -1551,6 +1598,40 @@ html[data-style='brutal'] .sel-trigger {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ---------- 轻量吐司（非阻塞提示：对齐 / 清除锚点等高频动作反馈） ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  z-index: 90;
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 8px 14px;
+  background: var(--ink);
+  color: var(--paper);
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--r);
+  box-shadow: var(--pop);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  /* 纯提示：不吃鼠标事件，刷题时不会挡到页面操作 */
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition:
+    opacity 0.18s var(--ease),
+    transform 0.18s var(--ease);
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px);
 }
 
 /* ==========================================================================

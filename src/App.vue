@@ -38,11 +38,27 @@ const showHelp = ref(false)
 watchEffect(() => {
   syncEngine.master = settings.master
   syncEngine.enabled = settings.syncEnabled
+  syncEngine.setMode(settings.syncMode)
+  syncEngine.setPageScale(settings.syncRatio, settings.syncOffset)
 })
 syncEngine.applyToSlave = (pf: number) => {
   const slave: MasterSide = settings.master === 'question' ? 'answer' : 'question'
   viewer.apis[slave]?.applyPageFloat(pf)
 }
+syncEngine.getSide = (side: MasterSide) => viewer.apis[side]?.syncSide() ?? null
+
+// 切换同步方式 / 重新开启同步后，立即按新口径把从侧拉齐
+// （flush: 'post' 保证上面的 watchEffect 已把新设置推给引擎）
+watch(
+  [() => settings.syncMode, () => settings.syncEnabled],
+  () => {
+    if (!settings.syncEnabled) return
+    const master = settings.master
+    if (!viewer.summary(master).loaded) return
+    syncEngine.onMasterScroll(viewer.summary(master).pageFloat)
+  },
+  { flush: 'post' }
+)
 
 // —— 专注模式：从单栏切回双栏时，把主侧位置重新同步给另一侧 ——
 watch(
@@ -73,6 +89,18 @@ watchEffect(() => {
 
 // —— 通用提示 ——
 const notice = ref<{ title: string; message: string } | null>(null)
+
+// —— 轻量吐司：用于「对齐」这类高频动作的非阻塞反馈（不打断刷题节奏） ——
+const toast = ref<string | null>(null)
+let toastTimer: number | null = null
+function showToast(msg: string): void {
+  toast.value = msg
+  if (toastTimer != null) window.clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => {
+    toast.value = null
+    toastTimer = null
+  }, 2600)
+}
 
 // —— 加密 PDF 密码流程 ——
 interface PasswordRequest {
@@ -170,6 +198,55 @@ async function openBookmarkPair(b: Bookmark): Promise<void> {
   await jumpToBookmark(b)
 }
 
+// —— 一键对齐（锚点校准） ——
+/**
+ * 把当前两侧页浮点记为一个锚点。
+ * 首次对齐会自动切到「锚点校准」方式——用户按下对齐就是想要精确对应，
+ * 不切模式的话记了锚点也不生效，反而像坏了。
+ */
+function alignSides(): void {
+  if (!viewer.left.loaded || !viewer.right.loaded) {
+    notice.value = { title: '无法对齐', message: '请先打开题本和解析两个 PDF。' }
+    return
+  }
+  const q = viewer.left.pageFloat
+  const a = viewer.right.pageFloat
+  if (!syncEngine.addAnchor(q, a)) {
+    notice.value = {
+      title: '锚点顺序冲突',
+      message:
+        '这个位置与已有锚点冲突：解析页码必须随题本页码递增。请换个位置对齐，或先清除已有锚点。'
+    }
+    return
+  }
+  const switched = settings.syncMode !== 'anchor'
+  if (switched) settings.setSyncMode('anchor')
+  settings.bumpSyncVersion()
+  showToast(
+    `已对齐 题本 P${Math.floor(q) + 1} ↔ 解析 P${Math.floor(a) + 1}` +
+      `（第 ${syncEngine.anchors.length} 个锚点）` +
+      (switched ? ' · 已切到锚点同步' : '')
+  )
+}
+
+/** 把锚点估算出的倍率/偏移写入设置（锚点是会话级，倍率可持久化） */
+function lockPageScale(): void {
+  const est = syncEngine.estimatePageScale()
+  if (!est) {
+    notice.value = { title: '锚点不足', message: '至少需要 2 个锚点才能估算倍率，请先多对齐几处。' }
+    return
+  }
+  settings.setPageScale(est.ratio, est.offset)
+  settings.setSyncMode('pageScale')
+  showToast(`已按锚点估算倍率 ${est.ratio.toFixed(3)}、偏移 ${est.offset.toFixed(2)} 并持久化`)
+}
+
+function clearAnchors(): void {
+  syncEngine.clearAnchors()
+  settings.bumpSyncVersion()
+  showToast('已清除全部锚点')
+}
+
 // —— 全局快捷键（绑定可自定义，来自 settings.shortcuts） ——
 function cycleMask(): void {
   const order: MaskMode[] = ['off', 'click', 'hover', 'eraser']
@@ -226,6 +303,9 @@ function executeShortcut(action: ShortcutAction): void {
       break
     case 'syncToggle':
       settings.toggleSync()
+      break
+    case 'syncAlign':
+      alignSides()
       break
     case 'pageNext':
       stepPage(1)
@@ -288,6 +368,9 @@ if (import.meta.env.DEV) {
   ;(window as unknown as Record<string, unknown>).__bookmarkStore = bookmark
   ;(window as unknown as Record<string, unknown>).__annotationStore = annotation
   ;(window as unknown as Record<string, unknown>).__syncEngine = syncEngine
+  ;(window as unknown as Record<string, unknown>).__alignSides = alignSides
+  ;(window as unknown as Record<string, unknown>).__clearAnchors = clearAnchors
+  ;(window as unknown as Record<string, unknown>).__lockPageScale = lockPageScale
   ;(window as unknown as Record<string, unknown>).__openBookmarkPair = openBookmarkPair
 }
 </script>
@@ -299,6 +382,9 @@ if (import.meta.env.DEV) {
       @toggle-bookmarks="showBookmarks = !showBookmarks"
       @add-bookmark="addBookmark"
       @toggle-help="showHelp = !showHelp"
+      @align-sync="alignSides"
+      @lock-page-scale="lockPageScale"
+      @clear-anchors="clearAnchors"
     />
     <div class="app-body">
       <SplitPane>
@@ -325,5 +411,8 @@ if (import.meta.env.DEV) {
       @confirm="notice = null"
     />
     <HelpDialog v-if="showHelp" @close="showHelp = false" />
+    <Transition name="toast">
+      <div v-if="toast" class="toast" role="status">{{ toast }}</div>
+    </Transition>
   </div>
 </template>

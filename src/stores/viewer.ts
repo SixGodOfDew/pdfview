@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { reactive, ref } from 'vue'
 import type { MasterSide } from '@/types'
+import type { SyncSide } from '@/core/sync/SyncEngine'
 import { PdfDocument, isPasswordError } from '@/core/pdf/PdfDocument'
 
 export interface ViewerSummary {
@@ -21,6 +22,11 @@ export interface ViewerApi {
   gotoPage(pageIndex: number): void
   /** 适应宽度：按当前页基准宽度铺满栏宽 */
   fitWidth(): void
+  /**
+   * 同步几何：当前 PageMapper 与视口高。
+   * 比例同步要按「滚动高度百分比」换算，必须拿到两侧各自的总高与视口高。
+   */
+  syncSide(): SyncSide
 }
 
 export type OpenResult = 'ok' | 'need-password' | 'error'
